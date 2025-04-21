@@ -109,7 +109,7 @@ class _ShopHomeState extends State<ShopHome> {
     if (actual <= discount || actual == 0) return "0%";
     return "${((actual - discount) / actual * 100).round()}%";
   }
-
+//s
   Widget _buildActionButton(IconData icon) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
