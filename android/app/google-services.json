@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "132056026039",
+    "firebase_url": "https://mybprohr-default-rtdb.firebaseio.com",
+    "project_id": "mybprohr",
+    "storage_bucket": "mybprohr.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:132056026039:android:4695447ac3c7406129f632",
+        "android_client_info": {
+          "package_name": "com.example.multi_vendor_ecommerce_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD0ycG9lrqhgq4JD83BLd1fnuyDqtLUZw4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
