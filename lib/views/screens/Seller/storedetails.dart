@@ -60,107 +60,103 @@ class _StoreDetailsState extends State<StoreDetails> {
   Future<void> _updateVendorData(String field, String value) async {
     try {
       await _userRef.update({field: value});
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('$field updated successfully!'),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
+      _showCustomSnackbar('$field updated successfully!', true);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error updating $field: $e'),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
+      _showCustomSnackbar('Error updating $field: $e', false);
     }
   }
 
-  Widget _buildProfileHeader() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFFFF4A49).withOpacity(0.1),
-            Colors.white.withOpacity(0.1),
-          ],
+  void _showCustomSnackbar(String message, bool isSuccess) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isSuccess ? Colors.green : Colors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
         ),
+        margin: EdgeInsets.only(
+          bottom: MediaQuery.of(context).size.height - 100,
+          right: 20,
+          left: 20,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileHeader(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(30),
+          bottomRight: Radius.circular(30),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Column(
         children: [
-          Container(
-            width: 100,
-            height: 100,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: const Color(0xFFFF4A49).withOpacity(0.3),
-                width: 2,
-              ),
-            ),
+          CircleAvatar(
+            radius: 50,
+            backgroundColor: isDarkMode
+                ? Colors.blueGrey[800]
+                : const Color(0xFFFF4A49).withOpacity(0.1),
             child: Icon(
-              Icons.storefront,
+              Icons.storefront_rounded,
               size: 40,
-              color: const Color(0xFFFF4A49),
+              color: isDarkMode
+                  ? Colors.blueGrey[200]
+                  : const Color(0xFFFF4A49),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           Text(
             _vendorData['businessName'] ?? 'Business Name',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w700,
               fontFamily: 'Poppins',
+              color: Theme.of(context).textTheme.bodyLarge?.color,
             ),
           ),
           const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            decoration: BoxDecoration(
-              color: _vendorData['status'] == 'approved'
-                  ? Colors.green.withOpacity(0.1)
-                  : Colors.orange.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(20),
+          Chip(
+            backgroundColor: _vendorData['status'] == 'approved'
+                ? Colors.green.withOpacity(0.15)
+                : Colors.orange.withOpacity(0.15),
+            label: Text(
+              _vendorData['status']?.toString().toUpperCase() ?? 'PENDING',
+              style: TextStyle(
+                color: _vendorData['status'] == 'approved'
+                    ? Colors.green
+                    : Colors.orange,
+                fontWeight: FontWeight.w600,
+                fontFamily: 'Poppins',
+              ),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.verified,
-                  size: 16,
-                  color: _vendorData['status'] == 'approved'
-                      ? Colors.green
-                      : Colors.orange,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  _vendorData['status']?.toString().toUpperCase() ?? 'PENDING',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: _vendorData['status'] == 'approved'
-                        ? Colors.green
-                        : Colors.orange,
-                  ),
-                ),
-              ],
+            avatar: Icon(
+              Icons.verified_rounded,
+              size: 18,
+              color: _vendorData['status'] == 'approved'
+                  ? Colors.green
+                  : Colors.orange,
             ),
           ),
         ],
       ),
     );
   }
+
 
   Widget _buildEditableField({
     required String label,
@@ -171,102 +167,122 @@ class _StoreDetailsState extends State<StoreDetails> {
     required String fieldName,
     required IconData icon,
   }) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 6,
-              offset: const Offset(0, 2)),
-        ],
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFF4A49).withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: const Color(0xFFFF4A49), size: 22),
-        ),
-        title: isEditing
-            ? TextField(
-          controller: controller,
-          style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              fontFamily: 'Poppins'),
-          decoration: InputDecoration(
-            border: InputBorder.none,
-            hintText: label,
-            hintStyle: TextStyle(
-              color: Colors.grey[400],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 8.0, bottom: 4),
+            child: Text(
+              label,
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
-        )
-            : Text(
-          value.isNotEmpty ? value : 'Not provided',
-          style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              fontFamily: 'Poppins'),
-        ),
-        trailing: IconButton(
-          icon: Icon(
-            isEditing ? Icons.check_circle_rounded : Icons.edit_rounded,
-            color: isEditing ? Colors.green : const Color(0xFFFF4A49),
-            size: 24,
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.grey.withOpacity(0.2),
+                width: 1,
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Icon(icon, color: Color(0xFFFF4A49), size: 24),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: isEditing
+                        ? TextField(
+                      controller: controller,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      decoration: InputDecoration(
+                        border: InputBorder.none,
+                        hintText: label,
+                      ),
+                    )
+                        : Text(
+                      value.isNotEmpty ? value : 'Not provided',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      isEditing ? Icons.check_circle_rounded : Icons.edit_rounded,
+                      color: isEditing ? Colors.green : Color(0xFFFF4A49),
+                      size: 24,
+                    ),
+                    onPressed: () async {
+                      if (isEditing) await _updateVendorData(fieldName, controller.text);
+                      onEditToggle(!isEditing);
+                    },
+                  ),
+                ],
+              ),
+            ),
           ),
-          onPressed: () async {
-            if (isEditing) await _updateVendorData(fieldName, controller.text);
-            onEditToggle(!isEditing);
-          },
-        ),
+        ],
       ),
     );
   }
 
   Widget _buildInfoItem(String title, String value, IconData icon) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 6,
-              offset: const Offset(0, 2)),
-        ],
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        leading: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFF4A49).withOpacity(0.1),
-            shape: BoxShape.circle,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 8.0, bottom: 4),
+            child: Text(
+              title,
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
-          child: Icon(icon, color: const Color(0xFFFF4A49), size: 22),
-        ),
-        title: Text(
-          title,
-          style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
-              fontFamily: 'Poppins'),
-        ),
-        subtitle: Text(
-          value,
-          style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              fontFamily: 'Poppins'),
-        ),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.grey.withOpacity(0.2),
+                width: 1,
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Icon(icon, color: Color(0xFFFF4A49), size: 24),
+                  const SizedBox(width: 16),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -277,50 +293,59 @@ class _StoreDetailsState extends State<StoreDetails> {
       appBar: AppBar(
         title: const Text('Store Profile',
             style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'Poppins')),
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'Poppins',
+              color: Colors.white,
+            )),
         centerTitle: true,
         elevation: 0,
-        backgroundColor: const Color(0xFFFF4A49),
-        leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-            onPressed: () => Navigator.pop(context)),
+        backgroundColor: Color(0xFFFF4A49),
+        iconTheme: IconThemeData(color: Colors.white),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            bottom: Radius.circular(30),
+          ),
+        ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator(color: Color(0xFFFF4A49)))
           : SingleChildScrollView(
         child: Column(
           children: [
-            _buildProfileHeader(),
-            const SizedBox(height: 16),
-            _buildEditableField(
-                label: 'Store Address',
-                value: _vendorData['address'] ?? '',
-                controller: _addressController,
-                isEditing: _isEditingAddress,
-                onEditToggle: (value) =>
-                    setState(() => _isEditingAddress = value),
-                fieldName: 'address',
-                icon: Icons.location_on_outlined),
-            _buildEditableField(
-                label: 'Contact Number',
-                value: _vendorData['phoneNumber'] ?? '',
-                controller: _phoneController,
-                isEditing: _isEditingPhone,
-                onEditToggle: (value) =>
-                    setState(() => _isEditingPhone = value),
-                fieldName: 'phoneNumber',
-                icon: Icons.phone_outlined),
-            _buildInfoItem(
-                'Registered Email',
-                _vendorData['email'] ?? 'Not provided',
-                Icons.email_outlined),
-            _buildInfoItem(
-                'Member Since',
-                _vendorData['createdAt'] ?? 'Unknown',
-                Icons.calendar_today_outlined),
+            _buildProfileHeader(context),
             const SizedBox(height: 24),
+            _buildEditableField(
+              label: 'Store Address',
+              value: _vendorData['address'] ?? '',
+              controller: _addressController,
+              isEditing: _isEditingAddress,
+              onEditToggle: (value) =>
+                  setState(() => _isEditingAddress = value),
+              fieldName: 'address',
+              icon: Icons.location_on_outlined,
+            ),
+            _buildEditableField(
+              label: 'Contact Number',
+              value: _vendorData['phoneNumber'] ?? '',
+              controller: _phoneController,
+              isEditing: _isEditingPhone,
+              onEditToggle: (value) =>
+                  setState(() => _isEditingPhone = value),
+              fieldName: 'phoneNumber',
+              icon: Icons.phone_outlined,
+            ),
+            _buildInfoItem(
+              'Registered Email',
+              _vendorData['email'] ?? 'Not provided',
+              Icons.email_outlined,
+            ),
+            _buildInfoItem(
+              'Member Since',
+              _vendorData['createdAt'] ?? 'Unknown',
+              Icons.calendar_today_outlined,
+            ),
+            const SizedBox(height: 32),
           ],
         ),
       ),

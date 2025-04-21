@@ -24,11 +24,14 @@ class _ShopHomeState extends State<ShopHome> {
   final DatabaseReference _favoritesRef = FirebaseDatabase.instance.ref('favourites');
   List<Map<String, dynamic>> categories = [];
   List<Map<String, dynamic>> latestProducts = [];
+  List<Map<String, dynamic>> allProducts = [];//new
   Set<String> favoriteProductIds = {};
   Set<String> cartProductIds = {};
   int cartItemCount = 0;
   final DatabaseReference _cartRef = FirebaseDatabase.instance.ref('carts');
   late User? _currentUser;
+  bool isSearching = false;
+
 
   @override
   void initState() {
@@ -39,7 +42,7 @@ class _ShopHomeState extends State<ShopHome> {
     _fetchCategories();
     _fetchLatestProducts();
     _loadFavorites(); // Add this line
-
+    _searchController.addListener(_handleSearch); // ✅ This now works
   }
 
   void getUserName() async {
@@ -50,6 +53,7 @@ class _ShopHomeState extends State<ShopHome> {
       });
     }
   }
+
   void _loadCartCount() {
     _cartRef.child(_currentUser?.uid ?? '').onValue.listen((event) {
       final data = event.snapshot.value;
@@ -83,6 +87,7 @@ class _ShopHomeState extends State<ShopHome> {
               ? data['imageUrls'][0]
               : null,
           'dateTime': data['dateTime'] ?? DateTime.now().toString(),
+          'category': data['category'] ?? 'Uncategorized', // यह लाइन जोड़ें
         };
       }).toList();
 
@@ -98,9 +103,31 @@ class _ShopHomeState extends State<ShopHome> {
       });
 
       setState(() {
-        latestProducts = tempList.take(6).toList();
+        allProducts = tempList;
+        latestProducts = allProducts.take(6).toList(); // Show latest by default
       });
     }
+  }
+
+// ✅ _handleSearch बाहर रखा गया है
+  void _handleSearch() {
+    if (_searchController.text.isEmpty) {
+      setState(() {
+        isSearching = false;
+        latestProducts = allProducts.take(6).toList(); // Show latest again
+      });
+      return;
+    }
+
+    setState(() {
+      isSearching = true;
+      latestProducts = allProducts.where((product) {
+        final query = _searchController.text.toLowerCase();
+        final productName = product['name'].toString().toLowerCase();
+        final category = product['category'].toString().toLowerCase();
+        return productName.contains(query) || category.contains(query);
+      }).toList();
+    });
   }
 
   String calculateDiscountPercentage(dynamic actualPrice, dynamic discountPrice) {
@@ -314,6 +341,7 @@ class _ShopHomeState extends State<ShopHome> {
                 ),
                 child: TextField(
                   controller: _searchController,
+                  onChanged: (_) => _handleSearch(),
                   style: TextStyle(
                     color: Theme.of(context).textTheme.bodyLarge?.color,
                     fontFamily: 'Poppins',
@@ -431,7 +459,7 @@ class _ShopHomeState extends State<ShopHome> {
               Padding(
                 padding: const EdgeInsets.only(top: 13, bottom: 8),
                 child: Text(
-                  'Latest Products',
+                  isSearching ? 'Search Results' : 'Latest Products',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -440,7 +468,32 @@ class _ShopHomeState extends State<ShopHome> {
                   ),
                 ),
               ),
-              GridView.builder(
+          latestProducts.isEmpty && isSearching
+              ? Padding(
+            padding: const EdgeInsets.symmetric(vertical: 50),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.search_off,
+                    size: 60,
+                    color: Colors.grey,
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'No products found matching your search',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey,
+                      fontFamily: 'Poppins',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+          :GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 padding: const EdgeInsets.only(
