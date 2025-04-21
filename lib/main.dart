@@ -26,7 +26,7 @@ void main() async {
     await Firebase.initializeApp();
   }
 
-  // Initialize GetStorage
+  // Initialize GetStorages
   await GetStorage.init();
 
   // Run App
