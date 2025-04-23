@@ -22,7 +22,7 @@ class _StoreDetailsState extends State<StoreDetails> {
   bool _isEditingAddress = false;
   bool _isEditingPhone = false;
   Map<String, dynamic> _vendorData = {};
-//hgjh
+
   @override
   void initState() {
     super.initState();

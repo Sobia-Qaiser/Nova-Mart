@@ -33,14 +33,17 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
-      case 'delivered':
-        return Colors.green;
       case 'pending':
-        return Colors.orange;
+        return Color(0xFF5E35B1); // Deep Purple
+      case 'processing':
+        return Color(0xFFFFA726); // Warm Amber
+    // Teal Blue
+      case 'delivered':
+        return Color(0xFF2E7D32); // Deep Green
       case 'cancelled':
-        return Colors.red;
+        return Color(0xFFE53935); // Soft Red
       default:
-        return Colors.grey;
+        return Color(0xFFB0BEC5); // Neutral Gray
     }
   }
 
@@ -261,6 +264,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     'Status',
                     status,
                     statusColor: _getStatusColor(status),
+                    isTotal: true,
                     isDarkMode: isDarkMode,
                   ),
                   _buildDetailRow('Delivery Estimate', deliveryTime, isDarkMode: isDarkMode),

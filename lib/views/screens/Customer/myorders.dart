@@ -5,6 +5,10 @@ import 'package:intl/intl.dart';
 import 'package:multi_vendor_ecommerce_app/views/screens/innerscreens/OrderDetail.dart';
 
 class MyOrders extends StatelessWidget {
+  String capitalize(String s) {
+    return s.isNotEmpty ? '${s[0].toUpperCase()}${s.substring(1).toLowerCase()}' : s;
+  }
+
   const MyOrders({super.key});
 
   double _parseDouble(dynamic value) {
@@ -83,7 +87,6 @@ class MyOrders extends StatelessWidget {
                       PageRouteBuilder(
                         pageBuilder: (context, animation, secondaryAnimation) => OrderDetailScreen(orderId: orderId),
                         transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                          // Fade transition example
                           return FadeTransition(
                             opacity: animation,
                             child: child,
@@ -92,18 +95,17 @@ class MyOrders extends StatelessWidget {
                       ),
                     );
                   },
-                  
 
-
-                  child:  _OrderItem(
+                  child: _OrderItem(
                     orderId: orderId,
                     orderNumber: order['orderNumber']?.toString() ?? 'N/A',
-                status: order['status']?.toString() ?? 'Pending',
-                createdAt: order['createdAt'],
-                totalAmount: _parseDouble(order['totalAmount']),
-                deliveryTime: order['deliveryTime']?.toString() ?? '5-6 business days',
-                isDarkMode: isDarkMode,
-              ));
+                    status: capitalize(order['status']?.toString() ?? 'Pending'),
+                    createdAt: order['createdAt'],
+                    totalAmount: _parseDouble(order['totalAmount']),
+                    deliveryTime: order['deliveryTime']?.toString() ?? '5-6 business days',
+                    isDarkMode: isDarkMode,
+                  )
+              );
             },
           );
         },
@@ -134,13 +136,15 @@ class _OrderItem extends StatelessWidget {
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'pending':
-        return Colors.red;
+        return Color(0xFF5E35B1);
       case 'processing':
-        return Colors.orange;
+        return Color(0xFFFFA726);
       case 'delivered':
-        return Colors.green;
+        return Color(0xFF2E7D32);
+      case 'cancelled':
+        return Color(0xFFE53935);
       default:
-        return Colors.grey;
+        return Color(0xFFB0BEC5);
     }
   }
 
@@ -160,6 +164,10 @@ class _OrderItem extends StatelessWidget {
     }
   }
 
+  String capitalize(String s) {
+    return s.isNotEmpty ? '${s[0].toUpperCase()}${s.substring(1).toLowerCase()}' : s;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -174,7 +182,6 @@ class _OrderItem extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Order Number
             Text(
               'Order Number $orderNumber',
               style: TextStyle(
@@ -183,20 +190,29 @@ class _OrderItem extends StatelessWidget {
                 color: isDarkMode ? Colors.white : Colors.black87,
               ),
             ),
-            const SizedBox(height: 12),
-
-            // Status Indicators
+            const SizedBox(height: 8),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildStatusIndicator('Pending'),
-                _buildStatusIndicator('Processing'),
-                _buildStatusIndicator('Delivered'),
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: _getStatusColor(status),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  capitalize(status),
+                  style: TextStyle(
+                    color: _getStatusColor(status),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
               ],
             ),
-            const SizedBox(height: 12),
-
-            // Order Details
+            const SizedBox(height: 8),
             _buildDetailRow('Order Date:', _formatTimestamp(createdAt)),
             _buildDetailRow('Total Amount:', 'PKR ${totalAmount.toStringAsFixed(0)}'),
             _buildDetailRow('Estimated Delivery:', deliveryTime),
@@ -237,7 +253,6 @@ class _OrderItem extends StatelessWidget {
       ],
     );
   }
-
 
   Widget _buildDetailRow(String label, String value) {
     return Padding(
