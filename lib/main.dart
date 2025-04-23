@@ -13,18 +13,26 @@ import 'views/screens/Customer/register_screen.dart';
 import 'views/screens/Customer/wlscreen.dart';
 import 'views/screens/Customer/profile_screen.dart';
 import 'firebase_options.dart';
-
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
 
-  // Initialize Firebase
-  if (kIsWeb) {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-  } else {
-    await Firebase.initializeApp();
-  }
+  Stripe.publishableKey = dotenv.env["STRIPE_PUBLISH_KEY"]!;
+  await Stripe.instance.applySettings();
+ try{
+   // Initialize Firebase
+   if (kIsWeb) {
+     await Firebase.initializeApp(
+       options: DefaultFirebaseOptions.currentPlatform,
+     );
+   } else {
+     await Firebase.initializeApp();
+   }
+ }catch(e){
+   print('Error initializing');
+ }
 
   // Initialize GetStorages
   await GetStorage.init();

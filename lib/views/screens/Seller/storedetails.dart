@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:intl/intl.dart';
 
 class StoreDetails extends StatefulWidget {
   const StoreDetails({super.key});
@@ -34,6 +35,15 @@ class _StoreDetailsState extends State<StoreDetails> {
     _phoneController = TextEditingController();
   }
 
+  String _formatDateTime(String dateString) {
+    try {
+      final dateTime = DateTime.parse(dateString);
+      return DateFormat('MMM d, y  h:mm a').format(dateTime);
+    } catch (e) {
+      return 'Unknown date';
+    }
+  }
+
   Future<void> _fetchVendorData() async {
     try {
       final User? user = _auth.currentUser;
@@ -60,229 +70,132 @@ class _StoreDetailsState extends State<StoreDetails> {
   Future<void> _updateVendorData(String field, String value) async {
     try {
       await _userRef.update({field: value});
-      _showCustomSnackbar('$field updated successfully!', true);
+      setState(() {
+        _vendorData[field] = value;
+      });
     } catch (e) {
-      _showCustomSnackbar('Error updating $field: $e', false);
+      print('Error updating $field: $e');
     }
   }
 
-  void _showCustomSnackbar(String message, bool isSuccess) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isSuccess ? Colors.green : Colors.red,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        margin: EdgeInsets.only(
-          bottom: MediaQuery.of(context).size.height - 100,
-          right: 20,
-          left: 20,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProfileHeader(BuildContext context) {
+  Widget _buildEditableInfoTile(
+      String title,
+      String value,
+      IconData icon,
+      TextEditingController controller,
+      bool isEditing,
+      VoidCallback onEditToggle,
+      ) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(30),
-          bottomRight: Radius.circular(30),
-        ),
-        boxShadow: [
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: isDarkMode ? null : [
           BoxShadow(
             color: Colors.grey.withOpacity(0.1),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          )
         ],
       ),
-      child: Column(
-        children: [
-          CircleAvatar(
-            radius: 50,
-            backgroundColor: isDarkMode
-                ? Colors.blueGrey[800]
-                : const Color(0xFFFF4A49).withOpacity(0.1),
-            child: Icon(
-              Icons.storefront_rounded,
-              size: 40,
-              color: isDarkMode
-                  ? Colors.blueGrey[200]
-                  : const Color(0xFFFF4A49),
-            ),
+      child: ListTile(
+        leading: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFF4A49).withOpacity(isDarkMode ? 0.2 : 0.1),
+            borderRadius: BorderRadius.circular(8),
           ),
-          const SizedBox(height: 20),
-          Text(
-            _vendorData['businessName'] ?? 'Business Name',
+          child: Icon(icon,
+              color: isDarkMode ? Colors.white70 : const Color(0xFFFF4A49),
+              size: 24),
+        ),
+        title: Text(title,
             style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w700,
-              fontFamily: 'Poppins',
+                fontSize: 12,
+                color: isDarkMode ? Colors.white70 : Colors.grey[600],
+                fontWeight: FontWeight.w500)),
+        subtitle: isEditing
+            ? TextField(
+          controller: controller,
+          style: TextStyle(
+            fontSize: 16,
+            color: Theme.of(context).textTheme.bodyLarge?.color,
+          ),
+          decoration: InputDecoration(
+            isDense: true,
+            border: InputBorder.none,
+            hintStyle: TextStyle(
+              color: Theme.of(context).hintColor,
+            ),
+          ),
+        )
+            : Text(value.isEmpty ? 'Not provided' : value,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
               color: Theme.of(context).textTheme.bodyLarge?.color,
+            )),
+        trailing: GestureDetector(
+          onTap: onEditToggle,
+          child: Text(
+            isEditing ? 'SAVE' : 'EDIT',
+            style: TextStyle(
+              color: isEditing
+                  ? const Color(0xFF4CAF50) // Green for SAVE
+                  : Theme.of(context).brightness == Brightness.dark
+                  ? const Color(0xFFFF4A49) // Pink for EDIT in dark mode
+                  : const Color(0xFFFF4A49), // Pink for EDIT in light mode too
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 8),
-          Chip(
-            backgroundColor: _vendorData['status'] == 'approved'
-                ? Colors.green.withOpacity(0.15)
-                : Colors.orange.withOpacity(0.15),
-            label: Text(
-              _vendorData['status']?.toString().toUpperCase() ?? 'PENDING',
-              style: TextStyle(
-                color: _vendorData['status'] == 'approved'
-                    ? Colors.green
-                    : Colors.orange,
-                fontWeight: FontWeight.w600,
-                fontFamily: 'Poppins',
-              ),
-            ),
-            avatar: Icon(
-              Icons.verified_rounded,
-              size: 18,
-              color: _vendorData['status'] == 'approved'
-                  ? Colors.green
-                  : Colors.orange,
-            ),
-          ),
-        ],
+        ),
+
       ),
     );
   }
 
+  Widget _buildInfoTile(String title, String value, IconData icon) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-  Widget _buildEditableField({
-    required String label,
-    required String value,
-    required TextEditingController controller,
-    required bool isEditing,
-    required Function(bool) onEditToggle,
-    required String fieldName,
-    required IconData icon,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 8.0, bottom: 4),
-            child: Text(
-              label,
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Colors.grey.withOpacity(0.2),
-                width: 1,
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  Icon(icon, color: Color(0xFFFF4A49), size: 24),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: isEditing
-                        ? TextField(
-                      controller: controller,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      decoration: InputDecoration(
-                        border: InputBorder.none,
-                        hintText: label,
-                      ),
-                    )
-                        : Text(
-                      value.isNotEmpty ? value : 'Not provided',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      isEditing ? Icons.check_circle_rounded : Icons.edit_rounded,
-                      color: isEditing ? Colors.green : Color(0xFFFF4A49),
-                      size: 24,
-                    ),
-                    onPressed: () async {
-                      if (isEditing) await _updateVendorData(fieldName, controller.text);
-                      onEditToggle(!isEditing);
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: isDarkMode ? null : [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          )
         ],
       ),
-    );
-  }
-
-  Widget _buildInfoItem(String title, String value, IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 8.0, bottom: 4),
-            child: Text(
-              title,
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
+      child: ListTile(
+        leading: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFF4A49).withOpacity(isDarkMode ? 0.2 : 0.1),
+            borderRadius: BorderRadius.circular(8),
           ),
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Colors.grey.withOpacity(0.2),
-                width: 1,
-              ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Icon(icon, color: Color(0xFFFF4A49), size: 24),
-                  const SizedBox(width: 16),
-                  Text(
-                    value,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+          child: Icon(icon,
+              color: isDarkMode ? Colors.white70 : const Color(0xFFFF4A49),
+              size: 24),
+        ),
+        title: Text(title,
+            style: TextStyle(
+                fontSize: 12,
+                color: isDarkMode ? Colors.white70 : Colors.grey[600],
+                fontWeight: FontWeight.w500)),
+        subtitle: Text(value.isEmpty ? 'Not provided' : value,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).textTheme.bodyLarge?.color,
+            )),
       ),
     );
   }
@@ -291,61 +204,67 @@ class _StoreDetailsState extends State<StoreDetails> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Store Profile',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              fontFamily: 'Poppins',
-              color: Colors.white,
-            )),
-        centerTitle: true,
-        elevation: 0,
-        backgroundColor: Color(0xFFFF4A49),
-        iconTheme: IconThemeData(color: Colors.white),
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(
-            bottom: Radius.circular(30),
+        title: const Text(
+          'Store Info',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+            color: Colors.white,
+            fontFamily: 'Poppins',
+            letterSpacing: 0.5,
           ),
         ),
+        centerTitle: true,
+        elevation: 0,
+        backgroundColor: const Color(0xFFFF4A49),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded,
+              size: 18, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: Color(0xFFFF4A49)))
+      body: _isLoading ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
         child: Column(
           children: [
-            _buildProfileHeader(context),
-            const SizedBox(height: 24),
-            _buildEditableField(
-              label: 'Store Address',
-              value: _vendorData['address'] ?? '',
-              controller: _addressController,
-              isEditing: _isEditingAddress,
-              onEditToggle: (value) =>
-                  setState(() => _isEditingAddress = value),
-              fieldName: 'address',
-              icon: Icons.location_on_outlined,
+            const SizedBox(height: 16),
+            _buildInfoTile('Store Name',
+                _vendorData['businessName'] ?? '', Icons.store),
+            _buildInfoTile('Store Status',
+                _vendorData['status']?.toString().toUpperCase() ?? 'PENDING',
+                Icons.verified_user_rounded),
+            _buildEditableInfoTile(
+              'Store Address',
+              _vendorData['address'] ?? '',
+              Icons.location_on_rounded,
+              _addressController,
+              _isEditingAddress,
+                  () async {
+                if (_isEditingAddress) {
+                  await _updateVendorData('address', _addressController.text);
+                }
+                setState(() => _isEditingAddress = !_isEditingAddress);
+              },
             ),
-            _buildEditableField(
-              label: 'Contact Number',
-              value: _vendorData['phoneNumber'] ?? '',
-              controller: _phoneController,
-              isEditing: _isEditingPhone,
-              onEditToggle: (value) =>
-                  setState(() => _isEditingPhone = value),
-              fieldName: 'phoneNumber',
-              icon: Icons.phone_outlined,
+            _buildEditableInfoTile(
+              'Contact Number',
+              _vendorData['phoneNumber'] ?? '',
+              Icons.phone_rounded,
+              _phoneController,
+              _isEditingPhone,
+                  () async {
+                if (_isEditingPhone) {
+                  await _updateVendorData('phoneNumber', _phoneController.text);
+                }
+                setState(() => _isEditingPhone = !_isEditingPhone);
+              },
             ),
-            _buildInfoItem(
-              'Registered Email',
-              _vendorData['email'] ?? 'Not provided',
-              Icons.email_outlined,
-            ),
-            _buildInfoItem(
-              'Member Since',
-              _vendorData['createdAt'] ?? 'Unknown',
-              Icons.calendar_today_outlined,
-            ),
-            const SizedBox(height: 32),
+            _buildInfoTile('Registered Email',
+                _vendorData['email'] ?? '', Icons.email_rounded),
+            _buildInfoTile('Member Since',
+                _formatDateTime(_vendorData['createdAt'] ?? ''),
+                Icons.calendar_today_rounded),
+            const SizedBox(height: 20),
           ],
         ),
       ),

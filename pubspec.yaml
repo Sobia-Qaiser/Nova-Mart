@@ -53,6 +53,11 @@ dependencies:
   platform:
   provider:
   image_picker:
+  flutter_stripe: ^10.2.0
+  flutter_dotenv: ^5.1.0
+  http: ^1.2.1
+  lottie: ^3.1.2
+
 
 
 
@@ -84,6 +89,7 @@ flutter:
   assets:
     - assets/images/
     - assets/fonts/
+    - .env
   fonts:
     - family: Lora
       fonts:
