@@ -9,7 +9,7 @@ class StoreDetails extends StatefulWidget {
   @override
   _StoreDetailsState createState() => _StoreDetailsState();
 }
-
+//fghfhf
 class _StoreDetailsState extends State<StoreDetails> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final DatabaseReference _dbRef = FirebaseDatabase.instance.ref();
