@@ -19,6 +19,31 @@ class MyOrders extends StatelessWidget {
     return 0.0;
   }
 
+  String _determineOrderStatus(Map<dynamic, dynamic>? itemsData) {
+    if (itemsData == null) return 'Pending';
+
+    bool allProcessing = true;
+    bool allDelivered = true;
+    bool hasItems = false;
+
+    itemsData.forEach((key, value) {
+      hasItems = true;
+      final status = value['vendorStatus']?.toString().toLowerCase() ?? 'pending';
+
+      if (status != 'processing' && status != 'delivered') {
+        allProcessing = false;
+      }
+      if (status != 'delivered') {
+        allDelivered = false;
+      }
+    });
+
+    if (!hasItems) return 'Pending';
+    if (allDelivered) return 'Delivered';
+    if (allProcessing) return 'Processing';
+    return 'Pending';
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -80,12 +105,18 @@ class MyOrders extends StatelessWidget {
               final entry = ordersList[index];
               final orderId = entry.key.toString();
               final order = entry.value;
+
+              // Get the order items to determine status
+              final orderItems = order['items'] as Map<dynamic, dynamic>?;
+              final status = _determineOrderStatus(orderItems);
+
               return GestureDetector(
                   onTap: () {
                     Navigator.push(
                       context,
                       PageRouteBuilder(
-                        pageBuilder: (context, animation, secondaryAnimation) => OrderDetailScreen(orderId: orderId),
+                        pageBuilder: (context, animation, secondaryAnimation) =>
+                            OrderDetailScreen(orderId: orderId),
                         transitionsBuilder: (context, animation, secondaryAnimation, child) {
                           return FadeTransition(
                             opacity: animation,
@@ -95,11 +126,10 @@ class MyOrders extends StatelessWidget {
                       ),
                     );
                   },
-
                   child: _OrderItem(
                     orderId: orderId,
                     orderNumber: order['orderNumber']?.toString() ?? 'N/A',
-                    status: capitalize(order['status']?.toString() ?? 'Pending'),
+                    status: capitalize(status), // Use the determined status
                     createdAt: order['createdAt'],
                     totalAmount: _parseDouble(order['totalAmount']),
                     deliveryTime: order['deliveryTime']?.toString() ?? '5-6 business days',
@@ -164,10 +194,6 @@ class _OrderItem extends StatelessWidget {
     }
   }
 
-  String capitalize(String s) {
-    return s.isNotEmpty ? '${s[0].toUpperCase()}${s.substring(1).toLowerCase()}' : s;
-  }
-
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -203,7 +229,7 @@ class _OrderItem extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  capitalize(status),
+                  status,
                   style: TextStyle(
                     color: _getStatusColor(status),
                     fontWeight: FontWeight.bold,
@@ -215,42 +241,11 @@ class _OrderItem extends StatelessWidget {
             const SizedBox(height: 8),
             _buildDetailRow('Order Date:', _formatTimestamp(createdAt)),
             _buildDetailRow('Total Amount:', 'PKR ${totalAmount.toStringAsFixed(0)}'),
-            _buildDetailRow('Estimated Delivery:', deliveryTime),
+            if (status.toLowerCase() != 'delivered') // Only show delivery estimate if status is not delivered
+              _buildDetailRow('Estimated Delivery:', deliveryTime),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildStatusIndicator(String targetStatus) {
-    final isActive = status.toLowerCase() == targetStatus.toLowerCase();
-    final color = _getStatusColor(targetStatus);
-    final inactiveColor = isDarkMode ? Colors.grey.shade600 : Colors.grey.shade300;
-    final textColor = isDarkMode ? Colors.grey.shade300 : Colors.grey.shade600;
-
-    return Row(
-      children: [
-        Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(
-            color: isActive ? color : inactiveColor,
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: isActive ? color : textColor,
-              width: 1.0,
-            ),
-          ),
-        ),
-        const SizedBox(width: 6),
-        Text(
-          targetStatus,
-          style: TextStyle(
-            color: isActive ? color : textColor,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
     );
   }
 

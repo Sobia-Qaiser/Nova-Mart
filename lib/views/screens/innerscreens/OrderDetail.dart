@@ -12,15 +12,16 @@ class OrderDetailScreen extends StatefulWidget {
 
 class _OrderDetailScreenState extends State<OrderDetailScreen> {
   late DatabaseReference _orderRef;
+  late DatabaseReference _orderItemsRef;
   late User? _currentUser;
   bool isLoading = true;
-
 
   @override
   void initState() {
     super.initState();
     _currentUser = FirebaseAuth.instance.currentUser;
     _orderRef = FirebaseDatabase.instance.ref('orders').child(widget.orderId);
+    _orderItemsRef = FirebaseDatabase.instance.ref('orders').child(widget.orderId).child('items');
 
     Future.delayed(const Duration(seconds: 1), () {
       if (mounted) {
@@ -37,7 +38,6 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         return Color(0xFF5E35B1); // Deep Purple
       case 'processing':
         return Color(0xFFFFA726); // Warm Amber
-    // Teal Blue
       case 'delivered':
         return Color(0xFF2E7D32); // Deep Green
       case 'cancelled':
@@ -120,8 +120,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       final double price = (item['price']?.toDouble() ?? 0.0);
       final String? size = item['size'];
       final String? color = item['color'];
+      final String? vendorStatus = item['Status']?.toString().toLowerCase();
 
-      // Combine size and color if at least one is available
       String? variation;
       if (size != null && size.isNotEmpty && color != null && color.isNotEmpty) {
         variation = 'Size: $size, Color: $color';
@@ -153,7 +153,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                       color: isDarkMode ? Colors.white : Colors.black,
                     ),
                   ),
-                  if (variation != null) // Show only if size or color is present
+                  if (variation != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 4.0),
                       child: Text(
@@ -161,6 +161,18 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                         style: TextStyle(
                           fontSize: 13,
                           color: isDarkMode ? Colors.grey[400] : Colors.grey[700],
+                        ),
+                      ),
+                    ),
+                  if (vendorStatus != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4.0),
+                      child: Text(
+                        'Vendor Status: ${vendorStatus.toUpperCase()}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: _getStatusColor(vendorStatus),
                         ),
                       ),
                     ),
@@ -189,6 +201,30 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     }).toList();
   }
 
+  String _determineOrderStatus(Map<dynamic, dynamic>? itemsData) {
+    if (itemsData == null) return 'Pending';
+
+    bool allProcessing = true;
+    bool allDelivered = true;
+    bool hasItems = false;
+
+    itemsData.forEach((key, value) {
+      hasItems = true;
+      final status = value['vendorStatus']?.toString().toLowerCase() ?? 'pending';
+
+      if (status != 'processing' && status != 'delivered') {
+        allProcessing = false;
+      }
+      if (status != 'delivered') {
+        allDelivered = false;
+      }
+    });
+
+    if (!hasItems) return 'Pending';
+    if (allDelivered) return 'Delivered';
+    if (allProcessing) return 'Processing';
+    return 'Pending';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -220,11 +256,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           ? const Center(child: CircularProgressIndicator())
           : StreamBuilder(
         stream: _orderRef.onValue,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+        builder: (context, orderSnapshot) {
+          if (orderSnapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (!snapshot.hasData || snapshot.data!.snapshot.value == null) {
+          if (!orderSnapshot.hasData || orderSnapshot.data!.snapshot.value == null) {
             return Center(
               child: Text(
                 'Order not found',
@@ -233,73 +269,90 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             );
           }
 
-          final data = snapshot.data!.snapshot.value as Map<dynamic, dynamic>;
-          final orderData = Map<String, dynamic>.from(data);
+          return StreamBuilder(
+            stream: _orderItemsRef.onValue,
+            builder: (context, itemsSnapshot) {
+              if (itemsSnapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
 
-          final orderNumber = orderData['orderNumber'] ?? '';
-          final status = orderData['status'] ?? 'Pending';
-          final createdAt = orderData['createdAt'] ?? '';
-          final deliveryTime = orderData['deliveryTime'] ?? '';
-          final total = (orderData['totalAmount'] ?? 0.0).toDouble();
-          final shipping = (orderData['shippingCharges'] ?? 0.0).toDouble();
-          final tax = (orderData['taxAmount'] ?? 0.0).toDouble();
-          final paymentMethod = orderData['paymentMethod'] == 'cod'
-              ? 'Cash on Delivery'
-              : 'Credit Card';
-          final name = orderData['name'] ?? '';
-          final email = orderData['email'] ?? '';
-          final address = orderData['address'] ?? '';
-          final city = orderData['city'] ?? '';
-          final country = orderData['country'] ?? '';
-          final zipCode = orderData['zipCode'] ?? '';
+              final orderData = Map<String, dynamic>.from(
+                  orderSnapshot.data!.snapshot.value as Map<dynamic, dynamic>);
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(8),
-            child: Column(
-              children: [
-                _buildSection('Order Summary', [
-                  _buildDetailRow('Order Number', orderNumber, isDarkMode: isDarkMode),
-                  _buildDetailRow('Order Date', createdAt, isDarkMode: isDarkMode),
-                  _buildDetailRow(
-                    'Status',
-                    status,
-                    statusColor: _getStatusColor(status),
-                    isTotal: true,
-                    isDarkMode: isDarkMode,
-                  ),
-                  _buildDetailRow('Delivery Estimate', deliveryTime, isDarkMode: isDarkMode),
-                ], isDarkMode),
+              Map<dynamic, dynamic>? orderItems;
+              if (itemsSnapshot.hasData && itemsSnapshot.data!.snapshot.value != null) {
+                orderItems = itemsSnapshot.data!.snapshot.value as Map<dynamic, dynamic>;
+              }
 
-                _buildSection('Shipping Address', [
-                  _buildDetailRow('Name', name, isDarkMode: isDarkMode),
-                  _buildDetailRow('Email', email, isDarkMode: isDarkMode),
-                  _buildDetailRow('Address', address, isDarkMode: isDarkMode),
-                  _buildDetailRow('City', city, isDarkMode: isDarkMode),
-                  _buildDetailRow('Country', country, isDarkMode: isDarkMode),
-                  _buildDetailRow('ZIP Code', zipCode, isDarkMode: isDarkMode),
-                ], isDarkMode),
+              // Determine order status based on all items' vendorStatus
+              final status = _determineOrderStatus(orderItems);
 
-                _buildSection('Payment Method', [
-                  _buildDetailRow('Method', paymentMethod, isDarkMode: isDarkMode),
-                ], isDarkMode),
+              final orderNumber = orderData['orderNumber'] ?? '';
+              final createdAt = orderData['createdAt'] ?? '';
+              final deliveryTime = orderData['deliveryTime'] ?? '';
+              final total = (orderData['totalAmount'] ?? 0.0).toDouble();
+              final shipping = (orderData['shippingCharges'] ?? 0.0).toDouble();
+              final tax = (orderData['taxAmount'] ?? 0.0).toDouble();
+              final paymentMethod = orderData['paymentMethod'] == 'cod'
+                  ? 'Cash on Delivery'
+                  : 'Credit Card';
+              final name = orderData['name'] ?? '';
+              final email = orderData['email'] ?? '';
+              final address = orderData['address'] ?? '';
+              final city = orderData['city'] ?? '';
+              final country = orderData['country'] ?? '';
+              final zipCode = orderData['zipCode'] ?? '';
 
-                _buildSection('Order Items', [
-                  ..._buildOrderItems(orderData['items'], isDarkMode),
-                ], isDarkMode),
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(8),
+                child: Column(
+                  children: [
+                    _buildSection('Order Summary', [
+                      _buildDetailRow('Order Number', orderNumber, isDarkMode: isDarkMode),
+                      _buildDetailRow('Order Date', createdAt, isDarkMode: isDarkMode),
+                      _buildDetailRow(
+                        'Status',
+                        status,
+                        statusColor: _getStatusColor(status),
+                        isTotal: true,
+                        isDarkMode: isDarkMode,
+                      ),
+                      if (status.toLowerCase() != 'delivered')
+                        _buildDetailRow('Delivery Estimate', deliveryTime, isDarkMode: isDarkMode),
+                    ], isDarkMode),
 
-                _buildSection('Total Breakdown', [
-                  _buildDetailRow('Subtotal', 'PKR ${(total - shipping - tax).toStringAsFixed(0)}',
-                      isDarkMode: isDarkMode),
-                  _buildDetailRow('Shipping', 'PKR ${shipping.toStringAsFixed(0)}',
-                      isDarkMode: isDarkMode),
-                  _buildDetailRow('Tax', 'PKR ${tax.toStringAsFixed(0)}',
-                      isDarkMode: isDarkMode),
-                  const Divider(),
-                  _buildDetailRow('Total Amount', 'PKR ${total.toStringAsFixed(0)}',
-                      isTotal: true, isDarkMode: isDarkMode),
-                ], isDarkMode),
-              ],
-            ),
+                    _buildSection('Shipping Address', [
+                      _buildDetailRow('Name', name, isDarkMode: isDarkMode),
+                      _buildDetailRow('Email', email, isDarkMode: isDarkMode),
+                      _buildDetailRow('Address', address, isDarkMode: isDarkMode),
+                      _buildDetailRow('City', city, isDarkMode: isDarkMode),
+                      _buildDetailRow('Country', country, isDarkMode: isDarkMode),
+                      _buildDetailRow('ZIP Code', zipCode, isDarkMode: isDarkMode),
+                    ], isDarkMode),
+
+                    _buildSection('Payment Method', [
+                      _buildDetailRow('Method', paymentMethod, isDarkMode: isDarkMode),
+                    ], isDarkMode),
+
+                    _buildSection('Order Items', [
+                      ..._buildOrderItems(orderData['items'], isDarkMode),
+                    ], isDarkMode),
+
+                    _buildSection('Total Breakdown', [
+                      _buildDetailRow('Subtotal', 'PKR ${(total - shipping - tax).toStringAsFixed(0)}',
+                          isDarkMode: isDarkMode),
+                      _buildDetailRow('Shipping', 'PKR ${shipping.toStringAsFixed(0)}',
+                          isDarkMode: isDarkMode),
+                      _buildDetailRow('Tax', 'PKR ${tax.toStringAsFixed(0)}',
+                          isDarkMode: isDarkMode),
+                      const Divider(),
+                      _buildDetailRow('Total Amount', 'PKR ${total.toStringAsFixed(0)}',
+                          isTotal: true, isDarkMode: isDarkMode),
+                    ], isDarkMode),
+                  ],
+                ),
+              );
+            },
           );
         },
       ),

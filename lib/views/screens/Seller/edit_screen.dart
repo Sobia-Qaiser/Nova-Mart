@@ -17,8 +17,8 @@ class _VendorOrdersScreenState extends State<VendorOrdersScreen> {
   bool isLoading = true;
 
   int newCount = 0;
+  int processingCount = 0;
   int deliveredCount = 0;
-  int cancelledCount = 0;
 
   @override
   void initState() {
@@ -33,8 +33,8 @@ class _VendorOrdersScreenState extends State<VendorOrdersScreen> {
         final data = Map<dynamic, dynamic>.from(snapshot.value as Map);
 
         int tempNew = 0;
+        int tempProcessing = 0;
         int tempDelivered = 0;
-        int tempCancelled = 0;
 
         data.forEach((orderId, order) {
           if (order['items'] != null) {
@@ -44,35 +44,33 @@ class _VendorOrdersScreenState extends State<VendorOrdersScreen> {
             items.forEach((productId, item) {
               if (item['vendorId'] == user?.uid) {
                 hasVendorProduct = true;
+                // Check status for vendor's products only
+                final status = (item['vendorStatus']?.toString() ?? 'pending').toLowerCase();
+                if (status == 'pending') {
+                  tempNew++;
+                } else if (status == 'processing') {
+                  tempProcessing++;
+                } else if (status == 'delivered') {
+                  tempDelivered++;
+                }
               }
             });
-
-            if (hasVendorProduct) {
-              final status = (order['status']?.toString() ?? 'pending').toLowerCase();
-              if (status == 'pending' || status == 'processing') {
-                tempNew++;
-              } else if (status == 'delivered') {
-                tempDelivered++;
-              } else if (status == 'cancelled') {
-                tempCancelled++;
-              }
-            }
           }
         });
 
         setState(() {
           orders = data;
           newCount = tempNew;
+          processingCount = tempProcessing;
           deliveredCount = tempDelivered;
-          cancelledCount = tempCancelled;
           isLoading = false;
         });
       } else {
         setState(() {
           orders = {};
           newCount = 0;
+          processingCount = 0;
           deliveredCount = 0;
-          cancelledCount = 0;
           isLoading = false;
         });
       }
@@ -120,7 +118,7 @@ class _VendorOrdersScreenState extends State<VendorOrdersScreen> {
           ),
           bottom: PreferredSize(
             preferredSize: const Size.fromHeight(40),
-            child: _buildTabBar(newCount, deliveredCount, cancelledCount, isDarkMode),
+            child: _buildTabBar(newCount, processingCount, deliveredCount, isDarkMode),
           ),
         ),
         body: isLoading
@@ -131,25 +129,26 @@ class _VendorOrdersScreenState extends State<VendorOrdersScreen> {
         )
             : TabBarView(
           children: [
-            _buildOrderList('new', isDarkMode),
+            _buildOrderList('pending', isDarkMode),
+            _buildOrderList('processing', isDarkMode),
             _buildOrderList('delivered', isDarkMode),
-            _buildOrderList('cancelled', isDarkMode),
           ],
         ),
       ),
     );
   }
 
-  PreferredSize _buildTabBar(int newCount, int deliveredCount, int cancelledCount, bool isDarkMode) {
+  PreferredSize _buildTabBar(int newCount, int processingCount, int deliveredCount, bool isDarkMode) {
     return PreferredSize(
       preferredSize: const Size.fromHeight(40),
       child: Container(
         color: const Color(0xFFFF4A49),
         child: TabBar(
+          labelPadding: const EdgeInsets.symmetric(horizontal: 4),
           tabs: [
             Tab(text: 'New ($newCount)'),
+            Tab(text: 'Processing ($processingCount)'),
             Tab(text: 'Delivered ($deliveredCount)'),
-            Tab(text: 'Cancelled ($cancelledCount)'),
           ],
           indicator: UnderlineTabIndicator(
             borderSide: BorderSide(
@@ -210,6 +209,7 @@ class _VendorOrdersScreenState extends State<VendorOrdersScreen> {
       int vendorItemCount = 0;
       double vendorTotalAmount = 0.0;
       List<Map<String, dynamic>> vendorItems = [];
+      String vendorOrderStatus = 'pending';
 
       if (order['items'] != null) {
         final items = Map<dynamic, dynamic>.from(order['items']);
@@ -232,7 +232,16 @@ class _VendorOrdersScreenState extends State<VendorOrdersScreen> {
               'quantity': quantity,
               'image': item['imageUrl'],
               'total': itemTotal,
+              'vendorStatus': item['vendorStatus'] ?? 'pending',
             });
+
+            // Determine the overall status for this vendor's products
+            final itemStatus = (item['vendorStatus']?.toString() ?? 'pending').toLowerCase();
+            if (itemStatus == 'delivered') {
+              vendorOrderStatus = 'delivered';
+            } else if (itemStatus == 'processing' && vendorOrderStatus != 'delivered') {
+              vendorOrderStatus = 'processing';
+            }
           }
         });
       }
@@ -240,20 +249,13 @@ class _VendorOrdersScreenState extends State<VendorOrdersScreen> {
       if (!hasVendorProduct) continue;
 
       // Check status filter
-      final status = (order['status']?.toString() ?? 'pending').toLowerCase();
-      if (statusFilter == 'new' && (status == 'pending' || status == 'processing')) {
+      if (statusFilter == vendorOrderStatus) {
         filteredOrders.add({
           'entry': entry,
           'itemCount': vendorItemCount,
           'totalAmount': vendorTotalAmount,
           'items': vendorItems,
-        });
-      } else if (statusFilter == status) {
-        filteredOrders.add({
-          'entry': entry,
-          'itemCount': vendorItemCount,
-          'totalAmount': vendorTotalAmount,
-          'items': vendorItems,
+          'vendorStatus': vendorOrderStatus,
         });
       }
     }
@@ -281,11 +283,12 @@ class _VendorOrdersScreenState extends State<VendorOrdersScreen> {
         final vendorItemCount = data['itemCount'];
         final vendorTotalAmount = data['totalAmount'];
         final vendorItems = data['items'] as List<Map<String, dynamic>>;
+        final vendorStatus = data['vendorStatus'];
 
         return _VendorOrderItem(
           orderId: orderId,
           orderNumber: order['orderNumber']?.toString() ?? 'N/A',
-          status: _capitalize(order['status']?.toString() ?? 'Pending'),
+          status: _capitalize(vendorStatus),
           createdAt: order['createdAt'],
           totalAmount: vendorTotalAmount,
           itemCount: vendorItemCount,
@@ -294,7 +297,8 @@ class _VendorOrdersScreenState extends State<VendorOrdersScreen> {
           paymentStatus: _capitalize(order['paymentStatus']?.toString() ??
               (order['paymentMethod'] == 'cod' ? 'Unpaid' : 'Paid')),
           items: vendorItems,
-          allowStatusChange: statusFilter == 'new',
+          allowStatusChange: statusFilter == 'pending' || statusFilter == 'processing',
+          vendorId: user?.uid ?? '',
         );
       },
     );
@@ -313,6 +317,7 @@ class _VendorOrderItem extends StatefulWidget {
   final String paymentStatus;
   final List<Map<String, dynamic>> items;
   final bool allowStatusChange;
+  final String vendorId;
 
   const _VendorOrderItem({
     required this.orderId,
@@ -326,6 +331,7 @@ class _VendorOrderItem extends StatefulWidget {
     required this.paymentStatus,
     required this.items,
     required this.allowStatusChange,
+    required this.vendorId,
   });
 
   @override
@@ -335,6 +341,7 @@ class _VendorOrderItem extends StatefulWidget {
 class _VendorOrderItemState extends State<_VendorOrderItem> {
   bool _showStatusDropdown = false;
   String? _selectedStatus;
+  bool _isUpdating = false;
 
   @override
   void initState() {
@@ -350,8 +357,6 @@ class _VendorOrderItemState extends State<_VendorOrderItem> {
         return const Color(0xFFFFA726);
       case 'delivered':
         return const Color(0xFF2E7D32);
-      case 'cancelled':
-        return const Color(0xFFE53935);
       default:
         return const Color(0xFFB0BEC5);
     }
@@ -390,151 +395,212 @@ class _VendorOrderItemState extends State<_VendorOrderItem> {
   }
 
   void _navigateToOrderDetail(BuildContext context) {
+    if (widget.vendorId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vendor ID is missing')),
+      );
+      return;
+    }
+
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => VendorOrderDetailScreen(orderId: widget.orderId),
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            VendorOrderDetailScreen(orderId: widget.orderId),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(
+            opacity: animation,
+            child: child,
+          );
+        },
       ),
     );
+
   }
 
-  void _updateOrderStatus(String newStatus) async {
+  Future<void> _updateOrderStatus(String newStatus) async {
+    if (widget.vendorId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vendor ID is missing')),
+      );
+      return;
+    }
+
+    setState(() => _isUpdating = true);
+
     try {
-      await FirebaseDatabase.instance
-          .ref('orders')
-          .child(widget.orderId)
-          .update({'status': newStatus.toLowerCase()});
+      final updates = <String, dynamic>{};
+
+      // Update vendorStatus for each product belonging to this vendor
+      for (final item in widget.items) {
+        final productId = item['productId'];
+        if (productId != null && productId.isNotEmpty) {
+          updates['items/$productId/vendorStatus'] = newStatus.toLowerCase();
+        }
+      }
+
+      // If all items are delivered and payment is COD, mark as paid
+      if (newStatus.toLowerCase() == 'delivered' &&
+          widget.paymentMethod == 'cod' &&
+          widget.paymentStatus.toLowerCase() != 'paid') {
+        updates['paymentStatus'] = 'paid';
+      }
+
+      if (updates.isNotEmpty) {
+        await FirebaseDatabase.instance
+            .ref('orders')
+            .child(widget.orderId)
+            .update(updates)
+            .then((_) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Status updated to $newStatus')),
+          );
+        });
+      }
 
       setState(() {
         _selectedStatus = _capitalize(newStatus);
         _showStatusDropdown = false;
       });
     } catch (e) {
-      setState(() {
-        _showStatusDropdown = false;
-      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update status: ${e.toString()}')),
+      );
+    } finally {
+      setState(() => _isUpdating = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-        onTap: () => _navigateToOrderDetail(context),
-    child: Card(
-    margin: const EdgeInsets.only(bottom: 16),
-    elevation: 2,
-    color: widget.isDarkMode ? Colors.grey[800] : Colors.white,
-    shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(12),
-    ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Order ${widget.orderNumber}',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: widget.isDarkMode ? Colors.white : Colors.black87,
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: _getPaymentStatusColor(widget.paymentStatus.toLowerCase()),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    widget.paymentStatus,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
+      onTap: () => _navigateToOrderDetail(context),
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 16),
+        elevation: 2,
+        color: widget.isDarkMode ? Colors.grey[800] : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Order ${widget.orderNumber}',
+                    style: TextStyle(
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
+                      color: widget.isDarkMode ? Colors.white : Colors.black87,
                     ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Status',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: widget.isDarkMode ? Colors.grey[400] : Colors.grey[600],
-                  ),
-                ),
-                widget.allowStatusChange
-                    ? GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _showStatusDropdown = !_showStatusDropdown;
-                    });
-                  },
-                  child: Row(
-                    children: [
-                      Text(
-                        _selectedStatus ?? widget.status,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: _getStatusColor((_selectedStatus ?? widget.status).toLowerCase()),
-                        ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _getPaymentStatusColor(widget.paymentStatus.toLowerCase()),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      widget.paymentStatus,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
                       ),
-                      const SizedBox(width: 4),
-                      Icon(
-                        _showStatusDropdown ? Icons.arrow_drop_up : Icons.arrow_drop_down,
-                        color: widget.isDarkMode ? Colors.grey[400] : Colors.grey[600],
-                      ),
-                    ],
+                    ),
                   ),
-                )
-                    : Text(
-                  _selectedStatus ?? widget.status,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: _getStatusColor((_selectedStatus ?? widget.status).toLowerCase()),
-                  ),
-                ),
-              ],
-            ),
-            if (_showStatusDropdown && widget.allowStatusChange)
-              Column(
-                children: [
-                  const SizedBox(height: 8),
-                  _buildStatusOption('Pending'),
-                  _buildStatusOption('Processing'),
-                  _buildStatusOption('Delivered'),
-                  _buildStatusOption('Cancelled'),
-                  const SizedBox(height: 8),
                 ],
               ),
-            const SizedBox(height: 12),
-            _buildDetailRow('Items:', '${widget.itemCount}'),
-            _buildDetailRow('Order Date:', _formatTimestamp(widget.createdAt)),
-            _buildDetailRow('Payment:', widget.paymentMethod == 'cod' ? 'COD' : 'Card'),
-            _buildDetailRow('Total Amount:', 'PKR ${widget.totalAmount.toStringAsFixed(0)}'),
-          ],
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Status',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: widget.isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                    ),
+                  ),
+                  widget.allowStatusChange
+                      ? GestureDetector(
+                    onTap: _isUpdating
+                        ? null
+                        : () {
+                      setState(() {
+                        _showStatusDropdown = !_showStatusDropdown;
+                      });
+                    },
+                    child: Row(
+                      children: [
+                        if (_isUpdating)
+                          const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        else
+                          Text(
+                            _selectedStatus ?? widget.status,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: _getStatusColor(
+                                  (_selectedStatus ?? widget.status).toLowerCase()),
+                            ),
+                          ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          _showStatusDropdown ? Icons.arrow_drop_up : Icons.arrow_drop_down,
+                          color: widget.isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                        ),
+                      ],
+                    ),
+                  )
+                      : Text(
+                    _selectedStatus ?? widget.status,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: _getStatusColor(
+                          (_selectedStatus ?? widget.status).toLowerCase()),
+                    ),
+                  ),
+                ],
+              ),
+              if (_showStatusDropdown && widget.allowStatusChange)
+                Column(
+                  children: [
+                    const SizedBox(height: 8),
+                    if (widget.status.toLowerCase() == 'pending')
+                      _buildStatusOption('Processing'),
+                    if (widget.status.toLowerCase() == 'pending' ||
+                        widget.status.toLowerCase() == 'processing')
+                      _buildStatusOption('Delivered'),
+                    const SizedBox(height: 8),
+                  ],
+                ),
+              const SizedBox(height: 12),
+              _buildDetailRow('Items:', '${widget.itemCount}'),
+              _buildDetailRow('Order Date:', _formatTimestamp(widget.createdAt)),
+              _buildDetailRow('Payment:', widget.paymentMethod == 'cod' ? 'COD' : 'Card'),
+              _buildDetailRow('Total Amount:', 'PKR ${widget.totalAmount.toStringAsFixed(0)}'),
+            ],
+          ),
         ),
       ),
-    ));
+    );
   }
 
   Widget _buildStatusOption(String status) {
     final isSelected = (_selectedStatus ?? '').toLowerCase() == status.toLowerCase();
 
     return GestureDetector(
-      onTap: () {
-        _updateOrderStatus(status);
-      },
+      onTap: _isUpdating ? null : () => _updateOrderStatus(status),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         curve: Curves.easeInOut,
