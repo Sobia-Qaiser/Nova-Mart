@@ -56,7 +56,7 @@ class _MainVendorScreenState extends State<MainVendorScreen> {
         ),
         items: [
           _buildNavItem(Icons.wallet_outlined, Icons.wallet, 'Earning', 0),
-          _buildNavItem(Icons.add, Icons.add, 'Add', 1),
+          _buildNavItem(Icons.local_mall_outlined, Icons.local_mall, 'Products', 1),
           _buildNavItem(Icons.list_outlined, Icons.list_rounded, 'Orders', 2),
           _buildNavItem(Icons.person_outline, Icons.person, 'Account', 3),
         ],

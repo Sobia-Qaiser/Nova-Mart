@@ -1,38 +1,95 @@
-import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:io';
+
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
-import 'package:multi_vendor_ecommerce_app/views/screens/Seller/provider/product_provider.dart';
-import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
+import 'package:multi_vendor_ecommerce_app/views/screens/innerscreens/Vendor%20product%20detail%20screen.dart';
+import 'package:provider/provider.dart';
+import 'package:multi_vendor_ecommerce_app/views/screens/Seller/provider/product_provider.dart';
 
 class UploadScreen extends StatelessWidget {
   const UploadScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Add New Product',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
+    final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        backgroundColor: isDarkMode ? Colors.grey[900] : const Color(0xFFF8F9FA),
+        appBar: AppBar(
+          title: const Text(
+            'Products',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 18,
+              color: Colors.white,
+              fontFamily: 'Poppins',
+              letterSpacing: 0.5,
+            ),
+          ),
+          centerTitle: true,
+          elevation: 0,
+          backgroundColor: const Color(0xFFFF4A49),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
+          ),
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(40),
+            child: Container(
+              color: const Color(0xFFFF4A49),
+              child: Consumer<ProductProvider>(
+                builder: (context, provider, _) {
+                  return TabBar(
+                    labelPadding: EdgeInsets.symmetric(horizontal: 4),
+                    tabs: [
+                      Tab(text: 'Add Products'),
+                      Tab(text: 'Uploaded Products(${provider.uploadedProductsCount})'),
+                    ],
+                    indicator: UnderlineTabIndicator(
+                      borderSide: BorderSide(
+                        width: 3.0,
+                        color: Color(0xFFFFD180),
+                      ),
+                      insets: EdgeInsets.fromLTRB(30.0, 0.0, 30.0, 8.0),
+                    ),
+                    indicatorSize: TabBarIndicatorSize.label,
+                    labelStyle: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'Poppins',
+                      fontSize: 14,
+                      shadows: [
+                      Shadow(
+                      color: Colors.black12,
+                      blurRadius: 2,
+                      offset: Offset(1, 1)),
+                      ],
+                    ),
+                    unselectedLabelStyle: TextStyle(
+                      fontWeight: FontWeight.normal,
+                      fontFamily: 'Poppins',
+                      fontSize: 14,
+                    ),
+                    labelColor: Color(0xFFFFE0B2),
+                    unselectedLabelColor: Color(0xFFFFAB91),
+                  );
+                },
+              ),
+            ),
           ),
         ),
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+        body: const TabBarView(
+          children: [
+            GeneralScreen(),
+            UploadedProductsScreen(),
+          ],
         ),
-        backgroundColor: const Color(0xFFFF4A49),
-        elevation: 0,
       ),
-      body: const GeneralScreen(),
     );
   }
 }
@@ -77,7 +134,6 @@ class _GeneralScreenState extends State<GeneralScreen> {
     _provider = context.read<ProductProvider>();
     _provider.loadCategories();
     _initializeData();
-
   }
 
   @override
@@ -85,11 +141,15 @@ class _GeneralScreenState extends State<GeneralScreen> {
     _descriptionController.dispose();
     _sizeController.dispose();
     _colorController.dispose();
+    _varSizeController.dispose();
+    _varColorController.dispose();
+    _varQtyController.dispose();
     super.dispose();
   }
+
   Future<void> _initializeData() async {
     await _provider.loadVendorInfo();
-
+    await _provider.loadVendorProducts();
   }
 
   Future<void> _pickImage() async {
@@ -121,18 +181,13 @@ class _GeneralScreenState extends State<GeneralScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final productId = FirebaseDatabase.instance
-          .ref('products')
-          .push()
-          .key!;
+      final productId = FirebaseDatabase.instance.ref('products').push().key!;
       final List<String> imageUrls = [];
 
       // Upload images to Firebase Storage
       for (String localPath in _provider.images) {
         final File imageFile = File(localPath);
-        final String fileName = '${DateTime
-            .now()
-            .millisecondsSinceEpoch}.jpg';
+        final String fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
         final Reference storageRef = FirebaseStorage.instance
             .ref('products/$productId/$fileName');
         await storageRef.putFile(imageFile);
@@ -140,9 +195,6 @@ class _GeneralScreenState extends State<GeneralScreen> {
         imageUrls.add(downloadUrl);
       }
 
-
-
-      // Prepare product data
       // Prepare product data
       final productData = {
         'productId': productId,
@@ -161,7 +213,6 @@ class _GeneralScreenState extends State<GeneralScreen> {
         'productType': _provider.productType,
         'dateTime': DateTime.now().toString(),
 
-        // Add conditional fields using proper Dart syntax
         if (_provider.productType == 'Simple Product')
           'quantity': _provider.productData['quantity'],
 
@@ -173,35 +224,28 @@ class _GeneralScreenState extends State<GeneralScreen> {
           }).toList(),
       };
 
-
       // Save to Firebase Realtime Database
       await FirebaseDatabase.instance
           .ref('products/$productId')
           .set(productData);
 
-      // Clear form after successful upload
-      setState(() {
-        _descriptionController.clear();
-        _sizeController.clear();
-        _colorController.clear();
-        _selectedSize = null;
-        _selectedCategory = null;
-      });
+      // Clear form and refresh products
       _provider.clearForm();
+      await _provider.loadVendorProducts();
+
       if (mounted) {
         Get.snackbar(
           "Success",
           "Product uploaded successfully!",
           snackPosition: SnackPosition.TOP,
-          backgroundColor: Colors.blueGrey[800], // Error वाले dark blue background
-          colorText: Colors.white, // White text
-          icon: const Icon(Icons.check_circle, color: Colors.greenAccent, size: 30), // Bright green icon
+          backgroundColor: Colors.blueGrey[800],
+          colorText: Colors.white,
+          icon: const Icon(Icons.check_circle, color: Colors.greenAccent, size: 30),
           shouldIconPulse: false,
           snackStyle: SnackStyle.FLOATING,
           isDismissible: true,
           margin: const EdgeInsets.all(10),
-          duration: const Duration(seconds: 3), // Same duration
-
+          duration: const Duration(seconds: 3),
         );
       }
     } catch (e) {
@@ -209,26 +253,22 @@ class _GeneralScreenState extends State<GeneralScreen> {
         Get.snackbar(
           "Error",
           "Something went wrong. Please try again.",
-          backgroundColor: Colors.blueGrey[800], // Dark Blue
+          backgroundColor: Colors.blueGrey[800],
           colorText: Colors.white,
           icon: Icon(Icons.cancel, color: Colors.white, size: 30),
           snackPosition: SnackPosition.TOP,
           margin: EdgeInsets.all(10),
           duration: Duration(seconds: 3),
         );
-
       }
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
-    final images = context
-        .watch<ProductProvider>()
-        .images;
+    final images = context.watch<ProductProvider>().images;
 
     return Form(
       key: _formKey,
@@ -250,10 +290,7 @@ class _GeneralScreenState extends State<GeneralScreen> {
                     width: double.infinity,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(_borderRadius),
-                      border: Border.all(
-                        color: Colors.black54,
-                        width: 2,
-                      ),
+                      border: Border.all(color: Colors.black54, width: 2),
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(_borderRadius),
@@ -304,10 +341,7 @@ class _GeneralScreenState extends State<GeneralScreen> {
                   decoration: BoxDecoration(
                     color: Colors.grey.shade100,
                     borderRadius: BorderRadius.circular(_borderRadius),
-                    border: Border.all(
-                      color: _borderColor,
-                      width: 1.5,
-                    ),
+                    border: Border.all(color: _borderColor, width: 1.5),
                   ),
                   child: Center(
                     child: Column(
@@ -366,16 +400,12 @@ class _GeneralScreenState extends State<GeneralScreen> {
                           width: 60,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(_borderRadius),
-                            border: Border.all(
-                              color: Colors.grey.shade300,
-                              width: 1,
-                            ),
+                            border: Border.all(color: Colors.grey.shade300, width: 1),
                           ),
                           child: Stack(
                             children: [
                               ClipRRect(
-                                borderRadius: BorderRadius.circular(
-                                    _borderRadius),
+                                borderRadius: BorderRadius.circular(_borderRadius),
                                 child: Image.file(
                                   File(images[imgIndex]),
                                   fit: BoxFit.cover,
@@ -391,8 +421,7 @@ class _GeneralScreenState extends State<GeneralScreen> {
                                 child: GestureDetector(
                                   onTap: () {
                                     setState(() {
-                                      final newImages = List<String>.from(
-                                          images);
+                                      final newImages = List<String>.from(images);
                                       newImages.removeAt(imgIndex);
                                       _provider.getFormData(images: newImages);
                                     });
@@ -440,9 +469,7 @@ class _GeneralScreenState extends State<GeneralScreen> {
                   icon: Icon(Icons.add, size: 20),
                   label: Text(
                     "Add More Images",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
@@ -489,10 +516,7 @@ class _GeneralScreenState extends State<GeneralScreen> {
                     children: [
                       TextSpan(
                         text: '* ',
-                        style: TextStyle(
-                          color: Colors.red,
-                          fontSize: 12,
-                        ),
+                        style: TextStyle(color: Colors.red, fontSize: 12),
                       ),
                       TextSpan(
                         text: 'Enter price in PKR only',
@@ -513,8 +537,7 @@ class _GeneralScreenState extends State<GeneralScreen> {
                 Expanded(
                   child: _buildTextField(
                     "Price",
-                        (value) =>
-                        _provider.getFormData(price: double.tryParse(value)),
+                        (value) => _provider.getFormData(price: double.tryParse(value)),
                     keyboardType: TextInputType.number,
                     validator: _validatePrice,
                   ),
@@ -523,9 +546,7 @@ class _GeneralScreenState extends State<GeneralScreen> {
                 Expanded(
                   child: _buildTextField(
                     "Shipping Price",
-                        (value) =>
-                        _provider.getFormData(
-                            shippingCharges: double.tryParse(value)),
+                        (value) => _provider.getFormData(shippingCharges: double.tryParse(value)),
                     keyboardType: TextInputType.number,
                     validator: _validateShipping,
                   ),
@@ -540,9 +561,7 @@ class _GeneralScreenState extends State<GeneralScreen> {
                 Expanded(
                   child: _buildTextField(
                     "Discount Price",
-                        (value) =>
-                        _provider.getFormData(
-                            discountPrice: double.tryParse(value)),
+                        (value) => _provider.getFormData(discountPrice: double.tryParse(value)),
                     keyboardType: TextInputType.number,
                     validator: _validateDiscountPrice,
                   ),
@@ -551,9 +570,7 @@ class _GeneralScreenState extends State<GeneralScreen> {
                 Expanded(
                   child: _buildTextField(
                     "Tax %",
-                        (value) =>
-                        _provider.getFormData(
-                            taxPercent: double.tryParse(value)),
+                        (value) => _provider.getFormData(taxPercent: double.tryParse(value)),
                     keyboardType: TextInputType.number,
                     validator: _validateTax,
                   ),
@@ -562,26 +579,20 @@ class _GeneralScreenState extends State<GeneralScreen> {
             ),
 
             // Variations Section
-            // Replace existing Visibility widget for variations with:
-    // In build() method's Visibility widget:
             Visibility(
               visible: _provider.productType == 'Product Variants',
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SizedBox(height: _inputPadding * 1.5),
-
-                  // ✅ Heading Outside the Box
                   _buildSectionHeader('Product Variations'),
-
-                  // ✅ Grey Bordered Box
                   Container(
                     width: double.infinity,
                     padding: EdgeInsets.all(_inputPadding),
                     margin: EdgeInsets.only(top: _inputPadding / 2),
                     decoration: BoxDecoration(
-                      color: Colors.grey[50], // very light grey background
-                      border: Border.all(color: Colors.grey.shade300), // lighter grey border
+                      color: Colors.grey[50],
+                      border: Border.all(color: Colors.grey.shade300),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Column(
@@ -599,7 +610,7 @@ class _GeneralScreenState extends State<GeneralScreen> {
                                           (value) {},
                                       controller: _varSizeController,
                                       validator: _validateSize,
-                                      contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12), // reduce height
+                                      contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                                     ),
                                   ),
                                   SizedBox(width: _inputPadding),
@@ -609,7 +620,7 @@ class _GeneralScreenState extends State<GeneralScreen> {
                                           (value) {},
                                       controller: _varColorController,
                                       validator: _validateColor,
-                                      contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12), // reduce height
+                                      contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                                     ),
                                   ),
                                   SizedBox(width: _inputPadding),
@@ -627,7 +638,7 @@ class _GeneralScreenState extends State<GeneralScreen> {
                                         if (value.length > 4) return 'Max 4 digits';
                                         return null;
                                       },
-                                      contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12), // reduce height
+                                      contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                                     ),
                                   ),
                                 ],
@@ -668,9 +679,7 @@ class _GeneralScreenState extends State<GeneralScreen> {
                                 final index = entry.key;
                                 final variation = entry.value;
 
-                                // Build dynamic label based on available values
                                 List<String> parts = [];
-
                                 if (variation['size'] != null && variation['size'].toString().trim().isNotEmpty) {
                                   parts.add('Size: ${variation['size']}');
                                 }
@@ -682,10 +691,7 @@ class _GeneralScreenState extends State<GeneralScreen> {
                                 }
 
                                 return Chip(
-                                  label: Text(
-                                    parts.join(' | '),
-                                    style: TextStyle(fontSize: 12),
-                                  ),
+                                  label: Text(parts.join(' | '), style: TextStyle(fontSize: 12)),
                                   deleteIcon: Icon(Icons.close, size: 16),
                                   onDeleted: () => _provider.removeVariation(index),
                                   backgroundColor: _chipBackground,
@@ -697,27 +703,25 @@ class _GeneralScreenState extends State<GeneralScreen> {
                               }).toList(),
                             ),
                           )
-
                       ],
                     ),
                   ),
-              ]
-            )),
-            SizedBox(height: _inputPadding * 2),
-            Center(
-              child: _buildSaveButton(),
+                ],
+              ),
             ),
-          ]
-    )
-      )
+            SizedBox(height: _inputPadding * 2),
+            Center(child: _buildSaveButton()),
+          ],
+        ),
+      ),
     );
   }
 
+  // Validation methods
   String? _validateProductName(String? value) {
     if (value == null || value.isEmpty) return 'Product name is required';
     if (RegExp(r'^[0-9]+$').hasMatch(value)) return 'Cannot be only digits';
-    if (value.trim().isNotEmpty &&
-        !RegExp(r'[a-zA-Z0-9]').hasMatch(value)) {
+    if (value.trim().isNotEmpty && !RegExp(r'[a-zA-Z0-9]').hasMatch(value)) {
       return 'Only special characters are not allowed';
     }
     return null;
@@ -768,30 +772,15 @@ class _GeneralScreenState extends State<GeneralScreen> {
   }
 
   String? _validateSize(String? value) {
-    // If value is null or empty, allow it
-    if (value == null || value.trim().isEmpty) {
-      return null;
-    }
-
-    // If the input doesn't contain any letters or numbers, show error
-    if (!RegExp(r'[a-zA-Z0-9]').hasMatch(value)) {
-      return 'Invalid';
-    }
-
-    // Otherwise, it's valid
+    if (value == null || value.trim().isEmpty) return null;
+    if (!RegExp(r'[a-zA-Z0-9]').hasMatch(value)) return 'Invalid';
     return null;
   }
 
-
   String? _validateColor(String? value) {
-    // Remove empty check
     if (value != null && value.trim().isNotEmpty) {
-      if (!RegExp(r'^[a-zA-Z0-9 ]+$').hasMatch(value)) {
-        return 'Invalid';
-      }
-      if (RegExp(r'^[0-9 ]+$').hasMatch(value)) {
-        return 'Invalid';
-      }
+      if (!RegExp(r'^[a-zA-Z0-9 ]+$').hasMatch(value)) return 'Invalid';
+      if (RegExp(r'^[0-9 ]+$').hasMatch(value)) return 'Invalid';
     }
     return null;
   }
@@ -800,7 +789,7 @@ class _GeneralScreenState extends State<GeneralScreen> {
     return value == null ? 'Please select product type' : null;
   }
 
-
+  // Helper widgets
   Widget _buildSectionHeader(String title) {
     return Padding(
       padding: EdgeInsets.only(bottom: _inputPadding / 2),
@@ -815,10 +804,10 @@ class _GeneralScreenState extends State<GeneralScreen> {
     );
   }
 
-  Widget _buildTextField(String label,
+  Widget _buildTextField(
+      String label,
       Function(String) onChanged, {
         TextEditingController? controller,
-        String? initialValue,
         TextInputType? keyboardType,
         String? Function(String?)? validator,
         EdgeInsets? contentPadding,
@@ -842,7 +831,7 @@ class _GeneralScreenState extends State<GeneralScreen> {
           borderRadius: BorderRadius.circular(_borderRadius),
           borderSide: BorderSide(color: _primaryColor),
         ),
-        contentPadding: EdgeInsets.symmetric(
+        contentPadding: contentPadding ?? EdgeInsets.symmetric(
           horizontal: _inputPadding,
           vertical: _inputPadding * 0.75,
         ),
@@ -876,16 +865,12 @@ class _GeneralScreenState extends State<GeneralScreen> {
               vertical: _inputPadding * 0.75,
             ),
           ),
-          validator: (value) =>
-          value == null
-              ? 'Please select a category'
-              : null,
+          validator: (value) => value == null ? 'Please select a category' : null,
           items: provider.categories
-              .map((category) =>
-              DropdownMenuItem(
-                value: category,
-                child: Text(category),
-              ))
+              .map((category) => DropdownMenuItem(
+            value: category,
+            child: Text(category),
+          ))
               .toList(),
           onChanged: (value) {
             setState(() => _selectedCategory = value);
@@ -902,11 +887,8 @@ class _GeneralScreenState extends State<GeneralScreen> {
       maxLines: 4,
       onChanged: (value) => _provider.getFormData(description: value),
       validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'Description is required';
-        } else if (value.length > 200) {
-          return 'Description cannot exceed 200 characters'; // New validation
-        }
+        if (value == null || value.isEmpty) return 'Description is required';
+        if (value.length > 200) return 'Description cannot exceed 200 characters';
         return null;
       },
       decoration: InputDecoration(
@@ -932,41 +914,6 @@ class _GeneralScreenState extends State<GeneralScreen> {
     );
   }
 
-  Widget _buildSaveButton() {
-    return SizedBox(
-      width: 160, // Make button width take the full space
-      height: 40, // Set the height to match your design
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFFFF4A49), // Button background color (red)
-          borderRadius: BorderRadius.circular(30), // Rounded corners
-        ),
-        child: ElevatedButton(
-          onPressed: _isLoading ? null : _uploadProduct, // Disable if loading
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.transparent, // Transparent background
-            shadowColor: Colors.transparent, // No shadow
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(30), // Rounded corners
-            ),
-            elevation: 0, // No elevation
-          ),
-          child: _isLoading
-              ? CircularProgressIndicator(
-              color: Colors.white) // Show loader while loading
-              : Text(
-            "Save Product",
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-              fontFamily: 'Poppins', // Custom font
-            ),
-          ),
-        ),
-      ),
-    );
-  }
   Widget _buildProductTypeDropdown() {
     return DropdownButtonFormField<String>(
       value: _selectedProductType,
@@ -1004,27 +951,38 @@ class _GeneralScreenState extends State<GeneralScreen> {
     );
   }
 
-  Widget _buildVariationField(String label, TextEditingController controller) {
-    return TextFormField(
-        controller: controller,
-        decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(
-        color: _secondaryColor.withOpacity(0.7)),
-    border: OutlineInputBorder(
-    borderRadius: BorderRadius.circular(_borderRadius)),
-    enabledBorder: OutlineInputBorder(
-    borderRadius: BorderRadius.circular(_borderRadius)),
-    focusedBorder: OutlineInputBorder(
-    borderRadius: BorderRadius.circular(_borderRadius)),
-    contentPadding: EdgeInsets.symmetric(
-    horizontal: 12, vertical: 14),
-    ),
-    validator: (value) {
-    if (value == null || value.isEmpty) return '$label required';
-    if (label == 'Qty' && int.tryParse(value) == null) return 'Invalid number';
-    return null;
-    },
+  Widget _buildSaveButton() {
+    return SizedBox(
+      width: 160,
+      height: 40,
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFFFF4A49),
+          borderRadius: BorderRadius.circular(30),
+        ),
+        child: ElevatedButton(
+          onPressed: _isLoading ? null : _uploadProduct,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.transparent,
+            shadowColor: Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(30),
+            ),
+            elevation: 0,
+          ),
+          child: _isLoading
+              ? CircularProgressIndicator(color: Colors.white)
+              : Text(
+            "Save Product",
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              fontFamily: 'Poppins',
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -1034,7 +992,6 @@ class _GeneralScreenState extends State<GeneralScreen> {
       final color = _varColorController.text.trim();
       final qty = _varQtyController.text.trim();
 
-      // New validation for at least size or color
       if (size.isEmpty && color.isEmpty) {
         Get.snackbar(
           "Error",
@@ -1051,4 +1008,475 @@ class _GeneralScreenState extends State<GeneralScreen> {
       _varQtyController.clear();
     }
   }
+}
+
+
+class UploadedProductsScreen extends StatefulWidget {
+  const UploadedProductsScreen({super.key});
+
+  @override
+  State<UploadedProductsScreen> createState() => _UploadedProductsScreenState();
+}
+
+class _UploadedProductsScreenState extends State<UploadedProductsScreen> {
+  String _selectedCategory = 'All';
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<ProductProvider>();
+    final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    // Get all unique categories
+    final categories = ['All'] +
+        provider.uploadedProducts
+            .map((p) => p['category']?.toString() ?? 'Uncategorized')
+            .toSet()
+            .toList();
+
+    // Filter products based on selected category
+    final filteredProducts = _selectedCategory == 'All'
+        ? provider.uploadedProducts
+        : provider.uploadedProducts.where((product) =>
+    (product['category']?.toString() ?? 'Uncategorized') == _selectedCategory).toList();
+
+    return Scaffold(
+      backgroundColor: isDarkMode ? Colors.grey[900] : const Color(0xFFF8F9FA),
+      body: Column(
+        children: [
+          // Category Filter Chips
+          Container(
+            height: 50,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: categories.length,
+              itemBuilder: (context, index) {
+                final category = categories[index];
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedCategory = category;
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: _selectedCategory == category
+                            ? const Color(0xFFFF4A49)
+                            : isDarkMode ? Colors.grey[800] : Colors.grey[200],
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        category,
+                        style: TextStyle(
+                          color: _selectedCategory == category
+                              ? Colors.white
+                              : isDarkMode ? Colors.white : Colors.black,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          // Product List
+          Expanded(
+            child: provider.isLoadingProducts
+                ? Center(child: CircularProgressIndicator())
+                : filteredProducts.isEmpty
+                ? Center(
+              child: Text(
+                _selectedCategory == 'All'
+                    ? 'No products uploaded yet'
+                    : 'No products in this category',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey,
+                ),
+              ),
+            )
+                : ListView.builder(
+              padding: const EdgeInsets.only(top: 3, left: 16, right: 16),
+
+              itemCount: filteredProducts.length,
+              itemBuilder: (context, index) {
+                final product = filteredProducts[index];
+                return _buildProductCard(context, product, provider);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
   }
+
+  Widget _buildProductCard(
+      BuildContext context, Map<String, dynamic> product, ProductProvider provider) {
+    final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final imageUrl = product['imageUrls'] != null && product['imageUrls'].isNotEmpty
+        ? product['imageUrls'][0]
+        : null;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 2,
+      color: isDarkMode ? Colors.grey[800] : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+        child: GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              PageRouteBuilder(
+                pageBuilder: (context, animation, secondaryAnimation) =>
+                    ProductDetailScreen(product: product),
+                transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                  return FadeTransition(
+                    opacity: animation,
+                    child: child,
+                  );
+                },
+              ),
+            );
+          },
+          child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Product Image
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    color: isDarkMode ? Colors.grey[700] : Colors.grey[200],
+                  ),
+                  child: imageUrl != null
+                      ? ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          Icon(Icons.broken_image, color: Colors.grey),
+                    ),
+                  )
+                      : Icon(Icons.image, color: Colors.grey),
+                ),
+                const SizedBox(width: 12),
+
+                // Product Details
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        product['productName'] ?? 'No Name',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: isDarkMode ? Colors.white : Colors.black87,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Category: ${product['category'] ?? 'No Category'}',
+                        style: TextStyle(
+                          color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          if (product['discountPrice'] != null && product['discountPrice'] > 0)
+                            Text(
+                              'PKR ${product['discountPrice']?.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFFFF4A49),
+                              ),
+                            ),
+                          if (product['discountPrice'] != null && product['discountPrice'] > 0)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 8),
+                              child: Text(
+                                'PKR ${product['price']?.toStringAsFixed(2) ?? '0.00'}',
+                                style: TextStyle(
+                                  decoration: TextDecoration.lineThrough,
+                                  color: isDarkMode ? Colors.grey[500] : Colors.grey,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            )
+                          else
+                            Text(
+                              'PKR ${product['price']?.toStringAsFixed(2) ?? '0.00'}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFFFF4A49),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Three Dot Menu
+                PopupMenuButton<String>(
+                  icon: Icon(Icons.more_vert, color: isDarkMode ? Colors.grey[400] : Colors.black87),
+                  onSelected: (value) => _handleMenuSelection(value, product['productId'], context, provider),
+                  itemBuilder: (BuildContext context) {
+                    return {'View', 'Edit', 'Delete'}.map((String choice) {
+                      return PopupMenuItem<String>(
+                        value: choice,
+                        child: Text(choice),
+                      );
+                    }).toList();
+                  },
+                ),
+              ],
+            ),
+
+            // Stock Information
+            const SizedBox(height: 12),
+            Divider(height: 1, color: isDarkMode ? Colors.grey[700] : Colors.grey[300]),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Stock',
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _getStockText(product),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: isDarkMode ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Status',
+                      style: TextStyle(
+                        color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _getStockStatusColor(product),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        _getStockStatus(product),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ));
+  }
+
+  String _getStockText(Map<String, dynamic> product) {
+    try {
+      if (product['productType'] == 'Product Variants' && product['variations'] != null) {
+        final variations = product['variations'] as List;
+        int totalStock = 0;
+
+        for (final variation in variations) {
+          final qty = variation['quantity'] is int
+              ? variation['quantity'] as int
+              : (int.tryParse(variation['quantity']?.toString() ?? '0'))?? 0;
+              totalStock += qty;
+              }
+
+              return '$totalStock';
+              }
+
+              final simpleQty = product['quantity'] is int
+              ? product['quantity'] as int
+                  : (int.tryParse(product['quantity']?.toString() ?? '0')) ?? 0;
+
+    return '$simpleQty';
+    } catch (e) {
+    debugPrint('Error in _getStockText: $e');
+    return '0';
+    }
+  }
+
+  String _getStockStatus(Map<String, dynamic> product) {
+    try {
+      int quantity = 0;
+
+      if (product['productType'] == 'Product Variants' && product['variations'] != null) {
+        final variations = product['variations'] as List;
+        for (final variation in variations) {
+          final qty = variation['quantity'] is int
+              ? variation['quantity'] as int
+              : (int.tryParse(variation['quantity']?.toString() ?? '0')) ?? 0;
+          quantity += qty;
+        }
+      } else {
+        quantity = product['quantity'] is int
+            ? product['quantity'] as int
+            : (int.tryParse(product['quantity']?.toString() ?? '0')) ?? 0;
+      }
+
+      if (quantity == 0) return 'Out of Stock';
+      if (quantity < 10) return 'Limited Stock';
+      return 'In Stock';
+    } catch (e) {
+      debugPrint('Error in _getStockStatus: $e');
+      return 'Status unknown';
+    }
+  }
+
+  Color _getStockStatusColor(Map<String, dynamic> product) {
+    try {
+      int quantity = 0;
+
+      if (product['productType'] == 'Product Variants' && product['variations'] != null) {
+        final variations = product['variations'] as List;
+        for (final variation in variations) {
+          final qty = variation['quantity'] is int
+              ? variation['quantity'] as int
+              : (int.tryParse(variation['quantity']?.toString() ?? '0')) ?? 0;
+          quantity += qty;
+        }
+      } else {
+        quantity = product['quantity'] is int
+            ? product['quantity'] as int
+            : (int.tryParse(product['quantity']?.toString() ?? '0')) ?? 0;
+      }
+
+      if (quantity == 0) return Colors.red;
+      if (quantity < 10) return Colors.orange;
+      return Colors.green;
+    } catch (e) {
+      debugPrint('Error in _getStockStatusColor: $e');
+      return Colors.grey;
+    }
+  }
+
+  void _handleMenuSelection(
+      String value,
+      String productId,
+      BuildContext context,
+      ProductProvider provider,
+      ) {
+    switch (value) {
+      case 'View':
+        final product = provider.uploadedProducts.firstWhere(
+              (p) => p['productId'] == productId,
+          orElse: () => {},
+        );
+
+        if (product.isNotEmpty) {
+          Navigator.push(
+            context,
+            PageRouteBuilder(
+              pageBuilder: (context, animation, secondaryAnimation) =>
+                  ProductDetailScreen(product: product),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: child,
+                );
+              },
+            ),
+          );
+        }
+        break;
+
+      case 'Edit':
+      // Add your edit logic here
+        break;
+
+      case 'Delete':
+        _showDeleteDialog(context, productId, provider);
+        break;
+    }
+  }
+
+  void _showDeleteDialog(
+      BuildContext context, String productId, ProductProvider provider) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Delete Product'),
+          content: const Text('Are you sure you want to delete this product?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                try {
+                  await provider.deleteProduct(productId);
+                  Navigator.of(context).pop();
+                  Get.snackbar(
+                    "Success",
+                    "Product deleted successfully!",
+                    backgroundColor: Colors.green,
+                    colorText: Colors.white,
+                  );
+                } catch (e) {
+                  Navigator.of(context).pop();
+                  Get.snackbar(
+                    "Error",
+                    "Failed to delete product",
+                    backgroundColor: Colors.red,
+                    colorText: Colors.white,
+                  );
+                }
+              },
+              child: const Text(
+                'Delete',
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+

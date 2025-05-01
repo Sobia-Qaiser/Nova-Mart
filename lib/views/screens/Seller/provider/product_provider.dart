@@ -20,54 +20,46 @@ class ProductProvider with ChangeNotifier {
   double? _discountPrice;
   int? _quantity;
   double? _shippingCharges;
-  double? _taxPercent; // New field for tax percentage
-  double? _taxAmount;// New field for calculated tax amount
+  double? _taxPercent;
+  double? _taxAmount;
   String? _dateTime;
   String? _productType;
-
   List<String> _images = [];
   List<String> _categories = [];
-
-
+  List<Map<String, dynamic>> _variations = [];
+  List<Map<String, dynamic>> _uploadedProducts = [];
+  bool _isLoadingProducts = false;
 
   // Getters
   List<String> get categories => _categories;
-
-
-  List<Map<String, dynamic>> _variations = [];
   List<Map<String, dynamic>> get variations => List.unmodifiable(_variations);
-
   List<String> get images => List.unmodifiable(_images);
-
   double? get taxPercent => _taxPercent;
-
   double? get taxAmount => _taxAmount;
   String? get dateTime => _dateTime;
   String? get productType => _productType;
+  List<Map<String, dynamic>> get uploadedProducts => List.unmodifiable(_uploadedProducts);
+  bool get isLoadingProducts => _isLoadingProducts;
+  int get uploadedProductsCount => _uploadedProducts.length;
 
-
-
-  Map<String, dynamic> get productData =>
-      {
-        'productName': _productName,
-        'category': _category,
-        'description': _description,
-        'brandName': _brandName,
-        'vendorId': _vendorId,
-        'businessName': _businessName,
-        'vendorAddress': _vendorAddress,
-        'price': _price,
-        'discountPrice': _discountPrice,
-        'quantity': _quantity,
-        'shippingCharges': _shippingCharges,
-        'taxPercent': _taxPercent,
-        'taxAmount': _taxAmount,
-        'images': _images,
-        'dateTime': _dateTime,
-        'productType': _productType,
-
-      };
-
+  Map<String, dynamic> get productData => {
+    'productName': _productName,
+    'category': _category,
+    'description': _description,
+    'brandName': _brandName,
+    'vendorId': _vendorId,
+    'businessName': _businessName,
+    'vendorAddress': _vendorAddress,
+    'price': _price,
+    'discountPrice': _discountPrice,
+    'quantity': _quantity,
+    'shippingCharges': _shippingCharges,
+    'taxPercent': _taxPercent,
+    'taxAmount': _taxAmount,
+    'images': _images,
+    'dateTime': _dateTime,
+    'productType': _productType,
+  };
 
   void clearForm() {
     _productName = null;
@@ -90,37 +82,28 @@ class ProductProvider with ChangeNotifier {
   }
 
   Future<void> loadVendorInfo() async {
-    final user = FirebaseAuth.instance.currentUser;  // Get current logged-in user
+    final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       try {
-        // Fetch the vendor data from Firebase Realtime Database using the current user's UID
         DataSnapshot snapshot = await FirebaseDatabase.instance
             .ref('users/${user.uid}')
             .get();
 
         if (snapshot.exists) {
-          // Assign the fetched data to local variables
           _vendorId = user.uid;
           _businessName = snapshot.child('businessName').value.toString();
           _vendorAddress = snapshot.child('address').value.toString();
-
-          // Notify listeners to update UI if necessary
           notifyListeners();
         } else {
-          // Handle case when no data is found for the vendor
           print('Vendor data not found');
         }
       } catch (e) {
-        // Handle errors (e.g., network issues)
         print('Error loading vendor data: $e');
       }
     } else {
-      // Handle case when user is not logged in
       print('No user is logged in');
     }
   }
-
-
 
   void loadCategories() {
     _dbRef.onValue.listen((event) {
@@ -134,27 +117,72 @@ class ProductProvider with ChangeNotifier {
     });
   }
 
+  Future<void> loadVendorProducts() async {
+    _isLoadingProducts = true;
+    notifyListeners();
 
-  // Calculate tax amount when tax percentage is set
-  // Calculate tax amount when tax percentage is set
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      final snapshot = await FirebaseDatabase.instance
+          .ref('products')
+          .orderByChild('vendorId')
+          .equalTo(user.uid)
+          .once();
+
+      if (snapshot.snapshot.value != null) {
+        final data = Map<String, dynamic>.from(snapshot.snapshot.value as dynamic);
+        _uploadedProducts = data.entries.map((entry) {
+          return {
+            'productId': entry.key,
+            ...Map<String, dynamic>.from(entry.value),
+          };
+        }).toList();
+      } else {
+        _uploadedProducts = [];
+      }
+    } catch (e) {
+      print('Error loading products: $e');
+      _uploadedProducts = [];
+    } finally {
+      _isLoadingProducts = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> deleteProduct(String productId) async {
+    try {
+      // Delete from database
+      await FirebaseDatabase.instance.ref('products/$productId').remove();
+
+      // Delete images from storage
+      final storageRef = _storage.ref('products/$productId');
+      await storageRef.listAll().then((result) {
+        for (var item in result.items) {
+          item.delete();
+        }
+      });
+
+      // Update local list
+      _uploadedProducts.removeWhere((product) => product['productId'] == productId);
+      notifyListeners();
+    } catch (e) {
+      print('Error deleting product: $e');
+      rethrow;
+    }
+  }
+
   void setTaxPercent(double? percent) {
     _taxPercent = percent;
 
-    // If discount price is available and greater than 0, apply tax on discount price
     if (_discountPrice != null && _discountPrice! > 0) {
-      // Apply tax on discount price
       _taxAmount = _discountPrice! * (percent! / 100);
     } else if (_price != null) {
-      // If discount price is not available, apply tax on base price
       _taxAmount = _price! * (percent! / 100);
     } else {
-      _taxAmount = null; // If no price is set, tax amount will be null
+      _taxAmount = null;
     }
-
-    // Debugging Output to Check Discount and Base Price
-    print('Discount Price: $_discountPrice');
-    print('Base Price: $_price');
-    print('Tax Amount: $_taxAmount');
 
     notifyListeners();
   }
@@ -162,18 +190,18 @@ class ProductProvider with ChangeNotifier {
   void handleProductTypeChange(String? type) {
     _productType = type;
     if (type == 'Simple Product') {
-      _variations.clear(); // Clear all variants
+      _variations.clear();
     } else if (type == 'Product Variants') {
-      _quantity = null; // Reset simple quantity
+      _quantity = null;
     }
     notifyListeners();
   }
 
   void addVariation(String size, String color, String quantity) {
     _variations.add({
-      'size': size,
-      'color': color,
-      'quantity': quantity
+      'size': size.isNotEmpty ? size : null,
+      'color': color.isNotEmpty ? color : null,
+      'quantity': int.tryParse(quantity) ?? 0
     });
     notifyListeners();
   }
@@ -183,24 +211,6 @@ class ProductProvider with ChangeNotifier {
     notifyListeners();
   }
 
-
-
-
-
-
-  // Image Management
-  void addImage(String imagePath) {
-    _images = [..._images, imagePath];
-    notifyListeners();
-  }
-
-  void removeImage(int index) {
-    _images = List.from(_images)
-      ..removeAt(index);
-    notifyListeners();
-  }
-
-  // Main Form Data Handler
   void getFormData({
     String? productName,
     String? category,
@@ -212,7 +222,6 @@ class ProductProvider with ChangeNotifier {
     double? shippingCharges,
     double? taxPercent,
     List<String>? images,
-
   }) {
     _productName = productName ?? _productName;
     _category = category ?? _category;
@@ -223,22 +232,11 @@ class ProductProvider with ChangeNotifier {
     _quantity = quantity ?? _quantity;
     _shippingCharges = shippingCharges ?? _shippingCharges;
     _images = images ?? _images;
-    _dateTime = DateFormat('yyyy-MM-dd HH:mm:ss').format(
-        DateTime.now());
+    _dateTime = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
 
-
-    // Handle tax percentage and calculation
     if (taxPercent != null) {
-      setTaxPercent(
-          taxPercent); // This will update _taxPercent and calculate _taxAmount
+      setTaxPercent(taxPercent);
     } else if (price != null && _taxPercent != null) {
-      // Recalculate tax if price changed but tax percent didn't
-      setTaxPercent(
-          _taxPercent); // This ensures tax amount is recalculated if price changes
-    }
-
-    // If price is set but taxPercent is null, you might want to recalculate tax as well
-    if (price != null && _taxPercent != null) {
       setTaxPercent(_taxPercent);
     }
 
