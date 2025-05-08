@@ -1440,12 +1440,21 @@ class _UploadedProductsScreenState extends State<UploadedProductsScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Delete Product'),
+          title: const Text(
+            'Delete Product',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, ),
+          ),
+
           content: const Text('Are you sure you want to delete this product?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Colors.black),
+              ),
+
+
             ),
             TextButton(
               onPressed: () async {
@@ -1455,16 +1464,28 @@ class _UploadedProductsScreenState extends State<UploadedProductsScreen> {
                   Get.snackbar(
                     "Success",
                     "Product deleted successfully!",
-                    backgroundColor: Colors.green,
-                    colorText: Colors.white,
+                    snackPosition: SnackPosition.TOP,
+                    backgroundColor: Colors.white,
+                    colorText: Colors.black,
+                    icon: const Icon(Icons.check_circle, color: Colors.green, size: 30),
+                    shouldIconPulse: false,
+                    snackStyle: SnackStyle.FLOATING,
+                    isDismissible: true,
+                    margin: const EdgeInsets.all(10),
                   );
                 } catch (e) {
                   Navigator.of(context).pop();
                   Get.snackbar(
                     "Error",
                     "Failed to delete product",
-                    backgroundColor: Colors.red,
-                    colorText: Colors.white,
+                    snackPosition: SnackPosition.TOP,
+                    backgroundColor: Colors.white,
+                    colorText: Colors.black,
+                    icon: const Icon(Icons.cancel, color: Colors.red, size: 30),
+                    shouldIconPulse: false,
+                    snackStyle: SnackStyle.FLOATING,
+                    isDismissible: true,
+                    margin: const EdgeInsets.all(10),
                   );
                 }
               },
