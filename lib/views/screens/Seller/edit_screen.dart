@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
+
+import 'package:get/get.dart';import 'package:get/get_core/src/get_main.dart';
 import 'package:intl/intl.dart';
+import 'package:multi_vendor_ecommerce_app/views/screens/Seller/main_vendor_screen.dart';
 import 'package:multi_vendor_ecommerce_app/views/screens/innerscreens/vendororderdetailscreen.dart';
 
 class VendorOrdersScreen extends StatefulWidget {
@@ -40,21 +43,34 @@ class _VendorOrdersScreenState extends State<VendorOrdersScreen> {
           if (order['items'] != null) {
             final items = Map<dynamic, dynamic>.from(order['items']);
             bool hasVendorProduct = false;
+            String orderStatus = 'pending'; // Default status
 
             items.forEach((productId, item) {
               if (item['vendorId'] == user?.uid) {
                 hasVendorProduct = true;
-                // Check status for vendor's products only
-                final status = (item['vendorStatus']?.toString() ?? 'pending').toLowerCase();
-                if (status == 'pending') {
-                  tempNew++;
-                } else if (status == 'processing') {
-                  tempProcessing++;
-                } else if (status == 'delivered') {
-                  tempDelivered++;
+                final itemStatus = (item['vendorStatus']?.toString() ?? 'pending').toLowerCase();
+
+                // If any item is delivered, the whole order is delivered
+                if (itemStatus == 'delivered') {
+                  orderStatus = 'delivered';
+                }
+                // If any item is processing and none are delivered, the order is processing
+                else if (itemStatus == 'processing' && orderStatus != 'delivered') {
+                  orderStatus = 'processing';
                 }
               }
             });
+
+            if (hasVendorProduct) {
+              // Count the order based on its overall status
+              if (orderStatus == 'pending') {
+                tempNew++;
+              } else if (orderStatus == 'processing') {
+                tempProcessing++;
+              } else if (orderStatus == 'delivered') {
+                tempDelivered++;
+              }
+            }
           }
         });
 
@@ -113,8 +129,23 @@ class _VendorOrdersScreenState extends State<VendorOrdersScreen> {
           elevation: 0,
           backgroundColor: const Color(0xFFFF4A49),
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Colors.white),
-            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                size: 18, color: Colors.white),
+            onPressed: () => Navigator.pushReplacement(
+              context,
+              PageRouteBuilder(
+                pageBuilder: (context, animation, secondaryAnimation) {
+                  return const MainVendorScreen(initialIndex: 0);
+                },
+                transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                  return FadeTransition(opacity: animation, child: child);
+                },
+                transitionDuration: const Duration(milliseconds: 300), // optional
+              ),
+            ),
+
+
+
           ),
           bottom: PreferredSize(
             preferredSize: const Size.fromHeight(40),
@@ -452,9 +483,22 @@ class _VendorOrderItemState extends State<_VendorOrderItem> {
             .child(widget.orderId)
             .update(updates)
             .then((_) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Status updated to $newStatus')),
+
+          Get.snackbar(
+            "Success",
+            "Status updated to $newStatus",
+            snackPosition: SnackPosition.TOP,
+            backgroundColor: Colors.white,
+            colorText: Colors.black,
+            icon: const Icon(Icons.check_circle, color: Colors.green, size: 30),
+            shouldIconPulse: false,
+            snackStyle: SnackStyle.FLOATING,
+            isDismissible: true,
+            margin: const EdgeInsets.all(10),
           );
+
+
+
         });
       }
 

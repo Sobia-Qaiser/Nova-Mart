@@ -29,7 +29,19 @@ class ManageOrders extends StatelessWidget {
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_ios_new_rounded,
                 size: 18, color: Colors.white),
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pushReplacement(
+              context,
+              PageRouteBuilder(
+                pageBuilder: (context, animation, secondaryAnimation) {
+                  return const MainVendorScreen(initialIndex: 0);
+                },
+                transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                  return FadeTransition(opacity: animation, child: child);
+                },
+                transitionDuration: const Duration(milliseconds: 300), // optional
+              ),
+            ),
+
           ),
           bottom: const TabBar(
             isScrollable: true,

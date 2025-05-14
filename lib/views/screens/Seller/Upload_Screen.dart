@@ -6,16 +6,20 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:multi_vendor_ecommerce_app/views/screens/Seller/main_vendor_screen.dart';
 import 'package:multi_vendor_ecommerce_app/views/screens/innerscreens/Vendor%20product%20detail%20screen.dart';
 import 'package:provider/provider.dart';
 import 'package:multi_vendor_ecommerce_app/views/screens/Seller/provider/product_provider.dart';
+
+import '../innerscreens/Vendorproductedit.dart';
 
 class UploadScreen extends StatelessWidget {
   const UploadScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
 
     return DefaultTabController(
       length: 2,
@@ -36,8 +40,23 @@ class UploadScreen extends StatelessWidget {
           elevation: 0,
           backgroundColor: const Color(0xFFFF4A49),
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Colors.white),
-            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                size: 18, color: Colors.white),
+            onPressed: () => Navigator.pushReplacement(
+              context,
+              PageRouteBuilder(
+                pageBuilder: (context, animation, secondaryAnimation) {
+                  return const MainVendorScreen(initialIndex: 0);
+                },
+                transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                  return FadeTransition(opacity: animation, child: child);
+                },
+                transitionDuration: const Duration(milliseconds: 300), // optional
+              ),
+            ),
+
+
+
           ),
           bottom: PreferredSize(
             preferredSize: const Size.fromHeight(40),
@@ -238,9 +257,9 @@ class _GeneralScreenState extends State<GeneralScreen> {
           "Success",
           "Product uploaded successfully!",
           snackPosition: SnackPosition.TOP,
-          backgroundColor: Colors.blueGrey[800],
-          colorText: Colors.white,
-          icon: const Icon(Icons.check_circle, color: Colors.greenAccent, size: 30),
+          backgroundColor: Colors.white,
+          colorText: Colors.black,
+          icon: const Icon(Icons.check_circle, color: Colors.green, size: 30),
           shouldIconPulse: false,
           snackStyle: SnackStyle.FLOATING,
           isDismissible: true,
@@ -253,9 +272,9 @@ class _GeneralScreenState extends State<GeneralScreen> {
         Get.snackbar(
           "Error",
           "Something went wrong. Please try again.",
-          backgroundColor: Colors.blueGrey[800],
-          colorText: Colors.white,
-          icon: Icon(Icons.cancel, color: Colors.white, size: 30),
+          backgroundColor: Colors.white,
+          colorText: Colors.black,
+          icon: Icon(Icons.cancel, color: Colors.red, size: 30),
           snackPosition: SnackPosition.TOP,
           margin: EdgeInsets.all(10),
           duration: Duration(seconds: 3),
@@ -522,7 +541,10 @@ class _GeneralScreenState extends State<GeneralScreen> {
                         text: 'Enter price in PKR only',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey[600],
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.grey[400]
+                              : Colors.grey[600],
+
                           fontStyle: FontStyle.italic,
                         ),
                       ),
@@ -589,12 +611,17 @@ class _GeneralScreenState extends State<GeneralScreen> {
                   Container(
                     width: double.infinity,
                     padding: EdgeInsets.all(_inputPadding),
-                    margin: EdgeInsets.only(top: _inputPadding / 2),
                     decoration: BoxDecoration(
-                      color: Colors.grey[50],
-                      border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(8),
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.grey[800]
+                          : Colors.grey[50],
+                      border: Border.all(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.grey[600]!
+                            : Colors.grey[300]!,
+                      ),
                     ),
+
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -691,15 +718,21 @@ class _GeneralScreenState extends State<GeneralScreen> {
                                 }
 
                                 return Chip(
-                                  label: Text(parts.join(' | '), style: TextStyle(fontSize: 12)),
+                                  label: Text(
+                                    parts.join(' | '),
+                                    style: TextStyle(fontSize: 12),
+                                  ),
                                   deleteIcon: Icon(Icons.close, size: 16),
                                   onDeleted: () => _provider.removeVariation(index),
-                                  backgroundColor: _chipBackground,
+                                  backgroundColor: Theme.of(context).brightness == Brightness.dark
+                                      ? Colors.grey[700]
+                                      : _chipBackground,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(6),
                                     side: BorderSide(color: _borderColor.withOpacity(0.3)),
                                   ),
                                 );
+
                               }).toList(),
                             ),
                           )
@@ -798,7 +831,8 @@ class _GeneralScreenState extends State<GeneralScreen> {
         style: TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.bold,
-          color: _secondaryColor,
+          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : _secondaryColor,
+
         ),
       ),
     );
@@ -812,20 +846,33 @@ class _GeneralScreenState extends State<GeneralScreen> {
         String? Function(String?)? validator,
         EdgeInsets? contentPadding,
       }) {
+    final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return TextFormField(
       controller: controller,
       onChanged: onChanged,
       validator: validator,
+      style: TextStyle(
+        color: isDarkMode ? Colors.white : Colors.black, // Text color
+      ),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: _secondaryColor.withOpacity(0.7)),
+        labelStyle: TextStyle(
+          color: isDarkMode ? Colors.white70 : _secondaryColor.withOpacity(0.7),
+        ),
+        filled: isDarkMode,
+        fillColor: isDarkMode ? Colors.grey[800] : Colors.white,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(_borderRadius),
-          borderSide: BorderSide(color: _borderColor),
+          borderSide: BorderSide(
+            color: isDarkMode ? Colors.grey[600]! : _borderColor,
+          ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(_borderRadius),
-          borderSide: BorderSide(color: _borderColor),
+          borderSide: BorderSide(
+            color: isDarkMode ? Colors.grey[600]! : _borderColor,
+          ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(_borderRadius),
@@ -839,7 +886,6 @@ class _GeneralScreenState extends State<GeneralScreen> {
       keyboardType: keyboardType,
     );
   }
-
   Widget _buildCategoryDropdown() {
     return Consumer<ProductProvider>(
       builder: (context, provider, _) {
@@ -847,7 +893,11 @@ class _GeneralScreenState extends State<GeneralScreen> {
           value: _selectedCategory,
           decoration: InputDecoration(
             labelText: "Category",
-            labelStyle: TextStyle(color: _secondaryColor.withOpacity(0.7)),
+            labelStyle: TextStyle(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.grey[300]
+                  : _secondaryColor.withOpacity(0.7),
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(_borderRadius),
               borderSide: BorderSide(color: _borderColor),
@@ -893,7 +943,11 @@ class _GeneralScreenState extends State<GeneralScreen> {
       },
       decoration: InputDecoration(
         labelText: "Description",
-        labelStyle: TextStyle(color: _secondaryColor.withOpacity(0.7)),
+        labelStyle: TextStyle(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.grey[300]
+              : _secondaryColor.withOpacity(0.7),
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(_borderRadius),
           borderSide: BorderSide(color: _borderColor),
@@ -919,7 +973,11 @@ class _GeneralScreenState extends State<GeneralScreen> {
       value: _selectedProductType,
       decoration: InputDecoration(
         labelText: "Product Type",
-        labelStyle: TextStyle(color: _secondaryColor.withOpacity(0.7)),
+        labelStyle: TextStyle(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.grey[300]
+              : _secondaryColor.withOpacity(0.7),
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(_borderRadius),
           borderSide: BorderSide(color: _borderColor),
@@ -1043,8 +1101,10 @@ class _UploadedProductsScreenState extends State<UploadedProductsScreen> {
       backgroundColor: isDarkMode ? Colors.grey[900] : const Color(0xFFF8F9FA),
       body: Column(
         children: [
+      Visibility(
+      visible: provider.uploadedProducts.isNotEmpty,
           // Category Filter Chips
-          Container(
+          child:Container(
             height: 50,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: ListView.builder(
@@ -1083,7 +1143,7 @@ class _UploadedProductsScreenState extends State<UploadedProductsScreen> {
                 );
               },
             ),
-          ),
+          )),
           // Product List
           Expanded(
             child: provider.isLoadingProducts
@@ -1425,7 +1485,27 @@ class _UploadedProductsScreenState extends State<UploadedProductsScreen> {
         break;
 
       case 'Edit':
-      // Add your edit logic here
+        final product = provider.uploadedProducts.firstWhere(
+              (p) => p['productId'] == productId,
+          orElse: () => {},
+        );
+
+        if (product.isNotEmpty) {
+          Navigator.push(
+            context,
+            PageRouteBuilder(
+              pageBuilder: (context, animation, secondaryAnimation) =>
+                  EditProductScreen(product: product),
+              transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: child,
+                );
+              },
+            ),
+          );
+        }
+
         break;
 
       case 'Delete':
