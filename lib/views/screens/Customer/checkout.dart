@@ -146,9 +146,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         final user = FirebaseAuth.instance.currentUser!;
         final orderRef = FirebaseDatabase.instance.ref('orders').push();
         final orderId = orderRef.key!;
-        final timestamp = DateTime
-            .now()
-            .millisecondsSinceEpoch;
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
         final orderNumber = '#${timestamp % 100000}'; // Human-readable order #
 
         final orderData = {
@@ -175,53 +173,45 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         final cartSnapshot = await _cartRef.child(user.uid).get();
 
         if (cartSnapshot.exists) {
-          final cartItems = Map<String, dynamic>.from(
-              cartSnapshot.value as Map);
+          final cartItems = Map<String, dynamic>.from(cartSnapshot.value as Map);
           final itemsRef = orderRef.child('items');
 
           int itemCount = 1;
           for (var entry in cartItems.entries) {
-            // Create base item data
+            // Create base item data including imageUrl
             final itemData = {
               'productId': entry.value['productId'],
               'name': entry.value['productName'],
               'price': _getEffectivePrice(entry.value),
               'quantity': entry.value['quantity'],
               'vendorId': entry.value['vendorId'],
+              'imageUrl': entry.value['imageUrl'], // Add image URL to order items
             };
 
-            if (entry.value['size'] != null &&
-                entry.value['size']
-                    .toString()
-                    .isNotEmpty) {
+            if (entry.value['size'] != null && entry.value['size'].toString().isNotEmpty) {
               itemData['size'] = entry.value['size'];
             }
-            if (entry.value['color'] != null &&
-                entry.value['color']
-                    .toString()
-                    .isNotEmpty) {
+            if (entry.value['color'] != null && entry.value['color'].toString().isNotEmpty) {
               itemData['color'] = entry.value['color'];
             }
             await itemsRef.child('item$itemCount').set(itemData);
             itemCount++;
-// Stock management logic with improved error handling
+
+            // Stock management logic remains the same
             final productRef = FirebaseDatabase.instance.ref('products/${entry.value['productId']}');
-            final orderedQty = entry.value['quantity'] as int; // Direct cast instead of parsing
+            final orderedQty = entry.value['quantity'] as int;
 
             try {
-              await productRef.runTransaction((Object? currentData){
+              await productRef.runTransaction((Object? currentData) {
                 if (currentData == null) {
                   print('⚠️ Product ${entry.value['productId']} not found in database!');
                   return Transaction.abort();
                 }
 
                 Map<String, dynamic> product = Map<String, dynamic>.from(currentData as Map);
-
-                // Null-check for product type
                 final productType = product['productType']?.toString() ?? 'Simple Product';
 
                 if (productType == 'Simple Product') {
-                  // Handle numeric or string quantity
                   int currentQty = (product['quantity'] is String)
                       ? int.tryParse(product['quantity']) ?? 0
                       : (product['quantity'] as int? ?? 0);
@@ -238,7 +228,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
                   for (int i = 0; i < variations.length; i++) {
                     final variation = Map<String, dynamic>.from(variations[i]);
-
                     final varColor = variation['color']?.toString();
                     final varSize = variation['size']?.toString();
 
@@ -248,13 +237,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     bool match = false;
 
                     if (colorExists && sizeExists) {
-                      // ✅ Match both
                       match = (varColor == orderColor) && (varSize == orderSize);
                     } else if (colorExists) {
-                      // ✅ Match only color
                       match = (varColor == orderColor);
                     } else if (sizeExists) {
-                      // ✅ Match only size
                       match = (varSize == orderSize);
                     }
 
@@ -267,23 +253,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       variation['quantity'] = varQty;
                       variations[i] = variation;
                       variationFound = true;
-
-                      print('✅ Matched and updated variation: ${variation.toString()}');
                       break;
                     }
                   }
 
                   if (!variationFound) {
-                    print('❌ Variation not found! Product: ${product['productName']}');
-                    print('🔍 Looking for: Size $orderSize, Color $orderColor');
-                    print('🛒 Available variations: ${variations.map((v) => 'Size ${v['size']}, Color ${v['color']}')}');
                     return Transaction.abort();
                   }
 
                   product['variations'] = variations;
                 }
                 else {
-                  print('⚠️ Unknown product type: $productType');
                   return Transaction.abort();
                 }
 
@@ -293,7 +273,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               print('🔥 Transaction error for product ${entry.value['productId']}: $e');
               throw Exception('Failed to update product stock: ${e.toString()}');
             }
-
           }
         }
 
@@ -305,21 +284,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               return OrderConfirmationScreen(
                 orderId: orderId,
                 totalAmount: total,
-                paymentMethod: _paymentMethod == 'cod'
-                    ? 'Cash on Delivery'
-                    : 'Credit Card',
+                paymentMethod: _paymentMethod == 'cod' ? 'Cash on Delivery' : 'Credit Card',
                 deliveryTime: "5 to 6 business Days",
                 address: _addressController.text,
                 orderNumber: orderNumber,
               );
             },
-            transitionsBuilder: (context, animation, secondaryAnimation,
-                child) {
-              // Fade transition for the new screen
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
               return FadeTransition(opacity: animation, child: child);
             },
-            transitionDuration: const Duration(
-                milliseconds: 300), // Optional: Set transition duration
+            transitionDuration: const Duration(milliseconds: 300),
           ),
         );
       } catch (e) {
@@ -328,7 +302,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         );
       } finally {
         setState(() {
-          _isLoading = false; // लोडिंग बंद
+          _isLoading = false;
         });
       }
     }

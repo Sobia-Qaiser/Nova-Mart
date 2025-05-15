@@ -121,6 +121,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       final String? size = item['size'];
       final String? color = item['color'];
       final String? vendorStatus = item['Status']?.toString().toLowerCase();
+      final String? imageUrl = item['imageUrl']; // Added image URL field
 
       String? variation;
       if (size != null && size.isNotEmpty && color != null && color.isNotEmpty) {
@@ -141,6 +142,36 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Product image container
+            if (imageUrl != null && imageUrl.isNotEmpty)
+              Container(
+                width: 60,
+                height: 60,
+                margin: const EdgeInsets.only(right: 12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: isDarkMode ? Colors.grey[800] : Colors.white,
+                  image: DecorationImage(
+                    image: NetworkImage(imageUrl),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              )
+            else
+              Container(
+                width: 60,
+                height: 60,
+                margin: const EdgeInsets.only(right: 12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: isDarkMode ? Colors.grey[800] : Colors.white,
+                ),
+                child: Icon(
+                  Icons.image_not_supported_outlined,
+                  color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                ),
+              ),
+
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

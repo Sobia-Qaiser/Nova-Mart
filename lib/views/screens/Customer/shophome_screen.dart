@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 import 'package:multi_vendor_ecommerce_app/views/screens/Admin/sidebar_screen/widget/banner_widget_home.dart';
+import 'package:multi_vendor_ecommerce_app/views/screens/innerscreens/searchscreen.dart';
 import '../../../controllers/auth_controller.dart';
 import '../innerscreens/ProductInfo.dart';
 import '../innerscreens/category_product.dart';
@@ -42,7 +43,6 @@ class _ShopHomeState extends State<ShopHome> {
     _fetchCategories();
     _fetchLatestProducts();
     _loadFavorites(); // Add this line
-    _searchController.addListener(_handleSearch); // ✅ This now works
   }
 
   void getUserName() async {
@@ -87,7 +87,7 @@ class _ShopHomeState extends State<ShopHome> {
               ? data['imageUrls'][0]
               : null,
           'dateTime': data['dateTime'] ?? DateTime.now().toString(),
-          'category': data['category'] ?? 'Uncategorized', // यह लाइन जोड़ें
+          'category': data['category'] ?? 'Uncategorized',
         };
       }).toList();
 
@@ -104,30 +104,9 @@ class _ShopHomeState extends State<ShopHome> {
 
       setState(() {
         allProducts = tempList;
-        latestProducts = allProducts.take(6).toList(); // Show latest by default
+        latestProducts = tempList.take(6).toList(); // Always keep only 6 latest products
       });
     }
-  }
-
-// ✅ _handleSearch बाहर रखा गया है
-  void _handleSearch() {
-    if (_searchController.text.isEmpty) {
-      setState(() {
-        isSearching = false;
-        latestProducts = allProducts.take(6).toList(); // Show latest again
-      });
-      return;
-    }
-
-    setState(() {
-      isSearching = true;
-      latestProducts = allProducts.where((product) {
-        final query = _searchController.text.toLowerCase();
-        final productName = product['name'].toString().toLowerCase();
-        final category = product['category'].toString().toLowerCase();
-        return productName.contains(query) || category.contains(query);
-      }).toList();
-    });
   }
 
   String calculateDiscountPercentage(dynamic actualPrice, dynamic discountPrice) {
@@ -246,7 +225,7 @@ class _ShopHomeState extends State<ShopHome> {
       backgroundColor: isDarkMode ? Colors.grey[900] : Color(0xFFF8F9FA),
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: isDarkMode ? Colors.grey[800] : Color(0xFFFF4A49),
+        backgroundColor: isDarkMode ? Color(0xFFFF4A49) : Color(0xFFFF4A49),
         automaticallyImplyLeading: false,
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -279,15 +258,9 @@ class _ShopHomeState extends State<ShopHome> {
 
                   icon: Container(
                     padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: isDarkMode
-                          ? Colors.grey[800]
-                          : Colors.pink.withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
                     child: Icon(
                       Icons.shopping_cart,
-                      color: isDarkMode ? Colors.white70 : Colors.white,
+                      color: isDarkMode ? Colors.white : Colors.white,
                       size: 20,
                     ),
                   ),
@@ -339,34 +312,41 @@ class _ShopHomeState extends State<ShopHome> {
                     color: isDarkMode ? Colors.grey[800]! : Colors.grey[300]!,
                   ),
                 ),
-                child: TextField(
-                  controller: _searchController,
-                  onChanged: (_) => _handleSearch(),
-                  style: TextStyle(
-                    color: Theme.of(context).textTheme.bodyLarge?.color,
-                    fontFamily: 'Poppins',
-                    fontSize: 13,
-                  ),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    prefixIcon: Icon(
-                      Icons.search,
-                      size: 22,
-                      color: isDarkMode ? Colors.white70 : const Color(0xFFFF4A49),
-                    ),
-                    hintText: "Search for products",
-                    hintStyle: TextStyle(
-                      color: isDarkMode ? Colors.grey[800] : Colors.grey,
-                      fontSize: 13,
-                      fontFamily: 'Poppins',
-                    ),
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(vertical: 8),
-                  ),
-                  textInputAction: TextInputAction.search,
-                  onSubmitted: (value) {
-                    print("Searching: $value");
+                child: InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      PageRouteBuilder(
+                        pageBuilder: (context, animation, secondaryAnimation) => const SearchScreen(),
+                        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                          return FadeTransition(opacity: animation, child: child); // Example transition
+                        },
+                        transitionDuration: const Duration(milliseconds: 300), // Optional: You can adjust the transition duration
+                      ),
+                    );
+
+
                   },
+                  child: Row(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(left: 12, right: 8),
+                        child: Icon(
+                          Icons.search,
+                          size: 22,
+                          color: isDarkMode ? Colors.white70 : const Color(0xFFFF4A49),
+                        ),
+                      ),
+                      Text(
+                        "Search for products",
+                        style: TextStyle(
+                          color: isDarkMode ? Colors.grey[800] : Colors.grey,
+                          fontSize: 13,
+                          fontFamily: 'Poppins',
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
 
@@ -459,7 +439,7 @@ class _ShopHomeState extends State<ShopHome> {
               Padding(
                 padding: const EdgeInsets.only(top: 13, bottom: 8),
                 child: Text(
-                  isSearching ? 'Search Results' : 'Latest Products',
+                  'Latest Products',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -468,32 +448,7 @@ class _ShopHomeState extends State<ShopHome> {
                   ),
                 ),
               ),
-          latestProducts.isEmpty && isSearching
-              ? Padding(
-            padding: const EdgeInsets.symmetric(vertical: 50),
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.search_off,
-                    size: 60,
-                    color: Colors.grey,
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    'No products found matching your search',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey,
-                      fontFamily: 'Poppins',
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          )
-          :GridView.builder(
+              GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 padding: const EdgeInsets.only(
@@ -710,6 +665,235 @@ class _ShopHomeState extends State<ShopHome> {
                   );
                 },
               ),
+          if (!isSearching) ...[
+    Padding(
+    padding: const EdgeInsets.only(top: 8, bottom: 4),
+    child: Text(
+    'Explore All Products',
+    style: TextStyle(
+    fontSize: 16,
+    fontWeight: FontWeight.w700,
+    fontFamily: 'Poppins',
+    color: Theme.of(context).textTheme.titleLarge?.color,
+    ),
+    ),
+    ),
+    GridView.builder(
+    shrinkWrap: true,
+    physics: const NeverScrollableScrollPhysics(),
+    padding: const EdgeInsets.only(
+    top: 6,
+    left: 4,
+    right: 4,
+    bottom: 16, // Extra padding at bottom
+    ),
+    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+    crossAxisCount: 2,
+    childAspectRatio: 0.75,
+    mainAxisSpacing: 12,
+    crossAxisSpacing: 12,
+    ),
+    itemCount: allProducts.length,
+    itemBuilder: (context, index) {
+    final product = allProducts[index];
+    final hasDiscount = product['discountPrice'] != null &&
+    product['discountPrice'].isNotEmpty &&
+    double.tryParse(product['price']) != null &&
+    double.tryParse(product['discountPrice']) != null &&
+    double.parse(product['discountPrice']) < double.parse(product['price']);
+    final discount = hasDiscount
+    ? calculateDiscountPercentage(
+    product['price'], product['discountPrice'])
+        : '';
+
+    return MouseRegion(
+    cursor: SystemMouseCursors.click,
+    child: GestureDetector(
+    onTap: () {
+    Navigator.push(
+    context,
+    PageRouteBuilder(
+    pageBuilder: (context, animation, secondaryAnimation) {
+    return ProductInfo(productId: product['key']);
+    },
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+    return FadeTransition(opacity: animation, child: child);
+    },
+    transitionDuration: const Duration(milliseconds: 300),
+    ),
+    );
+    },
+    child: AnimatedContainer(
+    duration: const Duration(milliseconds: 300),
+    curve: Curves.easeInOut,
+    decoration: BoxDecoration(
+    color: Theme.of(context).cardColor,
+    borderRadius: BorderRadius.circular(16),
+    boxShadow: [
+    BoxShadow(
+    color: Colors.black.withOpacity(0.08),
+    blurRadius: 12,
+    spreadRadius: 2,
+    offset: const Offset(0, 4),
+    )
+    ],
+    ),
+    child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+    Expanded(
+    child: Stack(
+    children: [
+    ClipRRect(
+    borderRadius: const BorderRadius.vertical(
+    top: Radius.circular(16)),
+    child: Container(
+    width: double.infinity,
+    color: Colors.grey.shade100,
+    child: product['image'] != null
+    ? Image.network(
+    product['image'],
+    fit: BoxFit.cover,
+    loadingBuilder: (context, child, progress) =>
+    progress == null
+    ? child
+        : Center(
+    child: CircularProgressIndicator(
+    strokeWidth: 2,
+    color: const Color(0xFFFF4A49),
+    )),
+    errorBuilder: (_, __, ___) => Icon(
+    Icons.image_not_supported,
+    color: Colors.grey.shade300,
+    size: 40,
+    ),
+    )
+        : Icon(
+    Icons.image_not_supported,
+    color: Colors.grey.shade300,
+    size: 40,
+    ),
+    ),
+    ),
+    if (hasDiscount)
+    Positioned(
+    top: 12,
+    left: -4,
+    child: Container(
+    padding: const EdgeInsets.symmetric(
+    horizontal: 6, vertical: 2),
+    decoration: BoxDecoration(
+    color: Color(0xFF2E7D32),
+    borderRadius: BorderRadius.circular(20),
+    ),
+    child: Text(
+    '-$discount',
+    style: const TextStyle(
+    color: Colors.white,
+    fontSize: 12,
+    fontWeight: FontWeight.w600,
+    fontFamily: 'Poppins',
+    letterSpacing: 0.5,
+    ),
+    ),
+    ),
+    ),
+    Positioned(
+    top: 12,
+    right: 12,
+    child: Column(
+    children: [
+    GestureDetector(
+    onTap: () => _toggleFavorite(product['key']),
+    child: _buildActionButton(
+    favoriteProductIds.contains(product['key'])
+    ? Icons.favorite
+        : Icons.favorite_border,
+    ),
+    ),
+    ],
+    ),
+    ),
+    ],
+    ),
+    ),
+    Padding(
+    padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
+    child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+    Text(
+    product['name'],
+    style: TextStyle(
+    fontSize: 14,
+    fontWeight: FontWeight.w600,
+    fontFamily: 'Poppins',
+    color: Theme.of(context).textTheme.titleLarge?.color,
+    ),
+    maxLines: 1,
+    overflow: TextOverflow.ellipsis,
+    ),
+    if ((product['description'] ?? '').isNotEmpty) ...[
+    const SizedBox(height: 2),
+    Text(
+    product['description'],
+    style: TextStyle(
+    fontSize: 13,
+    color: Colors.grey.shade600,
+    fontFamily: 'Poppins',
+    height: 1.1,
+    ),
+    maxLines: 1,
+    overflow: TextOverflow.ellipsis,
+    ),
+    ],
+    const SizedBox(height: 4),
+    Row(
+    children: [
+    if (hasDiscount) ...[
+    Text(
+    'PKR ${product['discountPrice']}',
+    style: const TextStyle(
+    fontSize: 14,
+    fontWeight: FontWeight.bold,
+    color: Color(0xFFFF4A49),
+    fontFamily: 'Poppins',
+    ),
+    ),
+    const SizedBox(width: 8),
+    Text(
+    'PKR ${product['price']}',
+    style: TextStyle(
+    fontSize: 12,
+    color: Colors.grey.shade600,
+    decoration: TextDecoration.lineThrough,
+    fontFamily: 'Poppins',
+    ),
+    ),
+    ] else ...[
+    Text(
+    'PKR ${product['price']}',
+    style: const TextStyle(
+    fontSize: 14,
+    fontWeight: FontWeight.bold,
+    color: Color(0xFFFF4A49),
+    fontFamily: 'Poppins',
+    ),
+    ),
+    ],
+    ],
+    )
+    ],
+    ),
+    ),
+    ],
+    ),
+    ),
+    ),
+    );
+    },
+    ),
+    ],
             ],
           ),
         ),
