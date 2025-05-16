@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
 
 class AuthController {
@@ -193,7 +194,34 @@ class AuthController {
 
     return null; // If user is not a customer or data doesn't exist
   }
+
+  Future<String?> getCurrentVendorName() async {
+    User? user = auth.currentUser;
+    if (user == null) return null;
+
+    // Fetch user data from "users" node
+    DataSnapshot userSnapshot = await database.child("users")
+        .child(user.uid)
+        .get();
+
+    if (userSnapshot.exists) {
+      Map<dynamic, dynamic>? userData = userSnapshot.value as Map<
+          dynamic,
+          dynamic>?;
+
+      if (userData != null && userData["role"] != null &&
+          userData["role"].toString().toLowerCase() == "vendor") {
+        return userData["fullName"]?.toString();
+      }
+    }
+
+    return null; // If user is not a customer or data doesn't exist
+  }
+
 }
+
+
+
 
 
 
