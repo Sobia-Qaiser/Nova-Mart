@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
@@ -17,64 +19,83 @@ class _VendorOrderDetailScreenState extends State<VendorOrderDetailScreen> {
   double vendorTotal = 0.0;
   List<Map<String, dynamic>> vendorItems = [];
   Map<String, dynamic> orderData = {};
+  StreamSubscription<DatabaseEvent>? _orderSubscription;
 
   @override
   void initState() {
     super.initState();
     _currentUser = FirebaseAuth.instance.currentUser;
     _orderRef = FirebaseDatabase.instance.ref('orders').child(widget.orderId);
-    _loadOrderData();
+    _setupOrderListener();
   }
 
-  void _loadOrderData() async {
-    final snapshot = await _orderRef.get();
-    if (snapshot.exists) {
-      setState(() {
-        orderData = Map<String, dynamic>.from(snapshot.value as Map);
-      });
+  @override
+  void dispose() {
+    _orderSubscription?.cancel();
+    super.dispose();
+  }
 
-      // Filter items belonging to this vendor
-      if (orderData['items'] != null) {
-        final items = Map<dynamic, dynamic>.from(orderData['items']);
-        vendorItems.clear();
-        vendorTotal = 0.0;
+  void _setupOrderListener() {
+    _orderSubscription = _orderRef.onValue.listen((event) {
+      final snapshot = event.snapshot;
+      if (snapshot.exists) {
+        setState(() {
+          orderData = Map<String, dynamic>.from(snapshot.value as Map);
+        });
 
-        for (var entry in items.entries) {
-          var item = entry.value;
-          if (item['vendorId'] == _currentUser?.uid) {
-            double price = (item['price']?.toDouble() ?? 0.0);
-            int quantity = (item['quantity']?.toInt() ?? 1);
-            vendorTotal += price * quantity;
+        // Filter items belonging to this vendor
+        if (orderData['items'] != null) {
+          final items = Map<dynamic, dynamic>.from(orderData['items']);
+          vendorItems.clear();
+          vendorTotal = 0.0;
 
-            // Use productName if available, otherwise fall back to name
-            String productName = item['productName'] ?? item['name'] ?? 'Product';
-            String? imageUrl = item['imageUrl'] ?? item['image'];
+          for (var entry in items.entries) {
+            var item = entry.value;
+            if (item['vendorId'] == _currentUser?.uid) {
+              double price = (item['price']?.toDouble() ?? 0.0);
+              int quantity = (item['quantity']?.toInt() ?? 1);
+              vendorTotal += price * quantity;
 
-            vendorItems.add({
-              'productId': entry.key.toString(),
-              'name': productName,
-              'price': price,
-              'quantity': quantity,
-              'size': item['size'],
-              'color': item['color'],
-              'image': imageUrl,
-            });
+              String productName = item['productName'] ?? item['name'] ?? 'Product';
+              String? imageUrl = item['imageUrl'] ?? item['image'];
+              String vendorStatus = item['vendorStatus']?.toString() ?? 'pending';
+
+              vendorItems.add({
+                'productId': entry.key.toString(),
+                'name': productName,
+                'price': price,
+                'quantity': quantity,
+                'size': item['size'],
+                'color': item['color'],
+                'image': imageUrl,
+                'vendorStatus': vendorStatus,
+              });
+            }
           }
         }
-      }
 
+        if (mounted) {
+          setState(() {
+            isLoading = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            isLoading = false;
+          });
+        }
+      }
+    }, onError: (error) {
       if (mounted) {
         setState(() {
           isLoading = false;
         });
       }
-    } else {
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
-      }
-    }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading order: ${error.message}')),
+      );
+    });
   }
 
   Color _getStatusColor(String status) {
@@ -292,13 +313,16 @@ class _VendorOrderDetailScreenState extends State<VendorOrderDetailScreen> {
                 _buildDetailRow('Order Date', orderData['createdAt']?.toString() ?? '', isDarkMode: isDarkMode),
                 _buildDetailRow(
                   'Status',
-                  capitalizedStatus,
-                  statusColor: _getStatusColor(status),
+                  vendorItems.isNotEmpty
+                      ? _capitalize(vendorItems.first['vendorStatus']?.toString() ?? 'processing')
+                      : 'N/A',
+                  statusColor: vendorItems.isNotEmpty
+                      ? _getStatusColor(vendorItems.first['vendorStatus']?.toString() ?? 'processing')
+                      : Colors.grey,
                   isDarkMode: isDarkMode,
                 ),
                 _buildDetailRow(
                   'Payment Status',
-                  // Show "Paid" if order is delivered, otherwise show actual status
                   isDelivered ? 'Paid' : _capitalize(orderData['paymentStatus']?.toString() ??
                       (orderData['paymentMethod'] == 'cod' ? 'Unpaid' : 'Paid')),
                   statusColor: isDelivered ? Colors.green :

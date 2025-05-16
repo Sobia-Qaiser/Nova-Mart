@@ -55,7 +55,7 @@ class _MainVendorScreenState extends State<MainVendorScreen> {
           fontFamily: 'Poppins',
         ),
         items: [
-          _buildNavItem(Icons.wallet_outlined, Icons.wallet, 'Earning', 0),
+          _buildNavItem(Icons.dashboard_customize_outlined, Icons.dashboard_customize, 'Dashboard', 0),
           _buildNavItem(Icons.local_mall_outlined, Icons.local_mall, 'Products', 1),
           _buildNavItem(Icons.list_outlined, Icons.list_rounded, 'Orders', 2),
           _buildNavItem(Icons.person_outline, Icons.person, 'Account', 3),
