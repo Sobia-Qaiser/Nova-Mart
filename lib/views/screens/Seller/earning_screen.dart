@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:multi_vendor_ecommerce_app/controllers/auth_controller.dart';
 import 'package:intl/intl.dart';
+import 'package:fl_chart/fl_chart.dart';
 
 class EarningScreen extends StatefulWidget {
   const EarningScreen({super.key});
@@ -19,6 +20,7 @@ class _EarningScreenState extends State<EarningScreen> {
   String userName = "Vendor";
   String vendorId = "";
   bool isLoading = true;
+  String selectedPeriod = "Weekly";
 
   int totalOrders = 0;
   int totalProducts = 0;
@@ -28,10 +30,18 @@ class _EarningScreenState extends State<EarningScreen> {
   double thisMonthEarningAfterCommission = 0.0;
   DateTime? vendorJoinDate;
 
+  // Data for the chart
+  List<FlSpot> weeklySpots = [];
+  List<FlSpot> monthlySpots = [];
+  List<String> weeklyLabels = [];
+  List<String> monthlyLabels = [];
+
   @override
   void initState() {
     super.initState();
-    _loadVendorData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadVendorData();
+    });
   }
 
   Future<void> _loadVendorData() async {
@@ -48,6 +58,7 @@ class _EarningScreenState extends State<EarningScreen> {
         _fetchTotalProducts(),
         _fetchTotalRevenue(),
         _fetchThisMonthEarning(),
+        _fetchChartData(),
       ]);
 
       if (mounted) {
@@ -67,21 +78,18 @@ class _EarningScreenState extends State<EarningScreen> {
   }
 
   Future<void> _fetchVendorJoinDate() async {
-    final snapshot = await _dbRef.child('users').child(vendorId).child(
-        'createdAt').once();
+    final snapshot = await _dbRef.child('users').child(vendorId).child('createdAt').once();
     if (snapshot.snapshot.value != null) {
       try {
         if (snapshot.snapshot.value is int) {
           setState(() {
-            vendorJoinDate = DateTime.fromMillisecondsSinceEpoch(
-                snapshot.snapshot.value as int);
+            vendorJoinDate = DateTime.fromMillisecondsSinceEpoch(snapshot.snapshot.value as int);
           });
         } else if (snapshot.snapshot.value is String) {
           final dateString = snapshot.snapshot.value as String;
           try {
             setState(() {
-              vendorJoinDate =
-                  DateFormat('yyyy-MM-dd HH:mm:ss').parse(dateString);
+              vendorJoinDate = DateFormat('yyyy-MM-dd HH:mm:ss').parse(dateString);
             });
           } catch (e) {
             try {
@@ -112,8 +120,7 @@ class _EarningScreenState extends State<EarningScreen> {
         bool hasVendorItem = false;
 
         items.forEach((itemId, itemData) {
-          if (itemData['vendorId'] == vendorId &&
-              itemData['vendorStatus'] == 'delivered') {
+          if (itemData['vendorId'] == vendorId && itemData['vendorStatus'] == 'delivered') {
             hasVendorItem = true;
           }
         });
@@ -160,19 +167,14 @@ class _EarningScreenState extends State<EarningScreen> {
         final items = orderData['items'] as Map<dynamic, dynamic>;
         double vendorOrderTotal = 0.0;
 
-        // Calculate total for this vendor in this order
         items.forEach((itemId, itemData) {
-          if (itemData['vendorId'] == vendorId &&
-              itemData['vendorStatus'] == 'delivered') {
-            vendorOrderTotal +=
-                (itemData['price'] ?? 0.0) * (itemData['quantity'] ?? 1);
+          if (itemData['vendorId'] == vendorId && itemData['vendorStatus'] == 'delivered') {
+            vendorOrderTotal += (itemData['price'] ?? 0.0) * (itemData['quantity'] ?? 1);
           }
         });
 
-        // Add to totals (with commission calculated per order)
         revenue += vendorOrderTotal;
-        revenueAfterCommission +=
-            vendorOrderTotal * 0.95; // Deduct 5% per order
+        revenueAfterCommission += vendorOrderTotal * 0.95;
       }
     });
 
@@ -202,8 +204,7 @@ class _EarningScreenState extends State<EarningScreen> {
 
       if (orderData['createdAt'] != null) {
         try {
-          orderDate =
-              DateFormat('d MMMM yyyy, h:mm a').parse(orderData['createdAt']);
+          orderDate = DateFormat('d MMMM yyyy, h:mm a').parse(orderData['createdAt']);
         } catch (e) {
           debugPrint("Error parsing createdAt: $e");
         }
@@ -218,8 +219,7 @@ class _EarningScreenState extends State<EarningScreen> {
       }
 
       if (orderDate == null && orderData['timestamp'] != null) {
-        orderDate =
-            DateTime.fromMillisecondsSinceEpoch(orderData['timestamp'] as int);
+        orderDate = DateTime.fromMillisecondsSinceEpoch(orderData['timestamp'] as int);
       }
 
       if (orderDate == null || orderDate.isBefore(firstDayOfMonth)) return;
@@ -227,16 +227,13 @@ class _EarningScreenState extends State<EarningScreen> {
       double vendorOrderTotal = 0.0;
       final items = orderData['items'] as Map<dynamic, dynamic>;
       items.forEach((itemId, itemData) {
-        if (itemData['vendorId'] == vendorId &&
-            itemData['vendorStatus'] == 'delivered') {
-          vendorOrderTotal +=
-              (itemData['price'] ?? 0.0) * (itemData['quantity'] ?? 1);
+        if (itemData['vendorId'] == vendorId && itemData['vendorStatus'] == 'delivered') {
+          vendorOrderTotal += (itemData['price'] ?? 0.0) * (itemData['quantity'] ?? 1);
         }
       });
 
-      // Add to totals (with commission calculated per order)
       earnings += vendorOrderTotal;
-      earningsAfterCommission += vendorOrderTotal * 0.95; // Deduct 5% per order
+      earningsAfterCommission += vendorOrderTotal * 0.95;
     });
 
     if (mounted) {
@@ -247,6 +244,106 @@ class _EarningScreenState extends State<EarningScreen> {
     }
   }
 
+  Future<void> _fetchChartData() async {
+    final now = DateTime.now();
+    final oneWeekAgo = now.subtract(const Duration(days: 7));
+    final oneMonthAgo = now.subtract(const Duration(days: 30));
+
+    final snapshot = await _dbRef.child('orders').once();
+    if (snapshot.snapshot.value == null) return;
+
+    final ordersMap = snapshot.snapshot.value as Map<dynamic, dynamic>;
+
+    Map<DateTime, int> weeklyData = {};
+    for (int i = 0; i < 7; i++) {
+      DateTime date = now.subtract(Duration(days: 6 - i));
+      weeklyData[DateTime(date.year, date.month, date.day)] = 0;
+    }
+
+    Map<DateTime, int> monthlyData = {};
+    for (int i = 0; i < 30; i++) {
+      DateTime date = now.subtract(Duration(days: 29 - i));
+      monthlyData[DateTime(date.year, date.month, date.day)] = 0;
+    }
+
+    ordersMap.forEach((orderId, orderData) {
+      if (orderData['items'] == null) return;
+
+      DateTime? orderDate;
+
+      if (orderData['createdAt'] != null) {
+        try {
+          orderDate = DateFormat('d MMMM yyyy, h:mm a').parse(orderData['createdAt']);
+        } catch (e) {
+          debugPrint("Error parsing createdAt: $e");
+        }
+      }
+
+      if (orderDate == null && orderData['orderDate'] != null) {
+        try {
+          orderDate = DateFormat('yyyy-MM-dd').parse(orderData['orderDate']);
+        } catch (e) {
+          debugPrint("Error parsing orderDate: $e");
+        }
+      }
+
+      if (orderDate == null && orderData['timestamp'] != null) {
+        orderDate = DateTime.fromMillisecondsSinceEpoch(orderData['timestamp'] as int);
+      }
+
+      if (orderDate == null) return;
+
+      bool hasVendorItems = false;
+      final items = orderData['items'] as Map<dynamic, dynamic>;
+      items.forEach((itemId, itemData) {
+        if (itemData['vendorId'] == vendorId && itemData['vendorStatus'] == 'delivered') {
+          hasVendorItems = true;
+        }
+      });
+
+      if (!hasVendorItems) return;
+
+      final orderDay = DateTime(orderDate.year, orderDate.month, orderDate.day);
+      if (orderDate.isAfter(oneWeekAgo)) {
+        if (weeklyData.containsKey(orderDay)) {
+          weeklyData[orderDay] = weeklyData[orderDay]! + 1;
+        }
+      }
+
+      if (orderDate.isAfter(oneMonthAgo)) {
+        if (monthlyData.containsKey(orderDay)) {
+          monthlyData[orderDay] = monthlyData[orderDay]! + 1;
+        }
+      }
+    });
+
+    weeklySpots = [];
+    weeklyLabels = [];
+    int dayIndex = 0;
+    weeklyData.forEach((date, count) {
+      weeklySpots.add(FlSpot(dayIndex.toDouble(), count.toDouble()));
+      weeklyLabels.add(DateFormat('EEE').format(date));
+      dayIndex++;
+    });
+
+    monthlySpots = [];
+    monthlyLabels = [];
+    int weekIndex = 0;
+    List<DateTime> monthlyDates = monthlyData.keys.toList()..sort();
+    for (int i = 0; i < monthlyDates.length; i += 7) {
+      int endIndex = i + 7 < monthlyDates.length ? i + 7 : monthlyDates.length;
+      int weeklyCount = 0;
+      for (int j = i; j < endIndex; j++) {
+        weeklyCount += monthlyData[monthlyDates[j]]!;
+      }
+      monthlySpots.add(FlSpot(weekIndex.toDouble(), weeklyCount.toDouble()));
+      monthlyLabels.add('Week ${weekIndex + 1}');
+      weekIndex++;
+    }
+
+    if (mounted) setState(() {});
+  }
+
   bool _isOrderValid(Map<dynamic, dynamic> orderData) {
     if (vendorJoinDate == null) return true;
 
@@ -254,8 +351,7 @@ class _EarningScreenState extends State<EarningScreen> {
 
     if (orderData['createdAt'] != null) {
       try {
-        orderDate =
-            DateFormat('d MMMM yyyy, h:mm a').parse(orderData['createdAt']);
+        orderDate = DateFormat('d MMMM yyyy, h:mm a').parse(orderData['createdAt']);
       } catch (e) {
         debugPrint("Error parsing createdAt: $e");
       }
@@ -270,12 +366,10 @@ class _EarningScreenState extends State<EarningScreen> {
     }
 
     if (orderDate == null && orderData['timestamp'] != null) {
-      orderDate =
-          DateTime.fromMillisecondsSinceEpoch(orderData['timestamp'] as int);
+      orderDate = DateTime.fromMillisecondsSinceEpoch(orderData['timestamp'] as int);
     }
 
-    return orderDate == null || orderDate.isAfter(vendorJoinDate!) ||
-        orderDate.isAtSameMomentAs(vendorJoinDate!);
+    return orderDate == null || orderDate.isAfter(vendorJoinDate!) || orderDate.isAtSameMomentAs(vendorJoinDate!);
   }
 
   Widget _buildStatCard({
@@ -286,14 +380,16 @@ class _EarningScreenState extends State<EarningScreen> {
     required bool isRevenueCard,
     double? grossAmount,
     double? netAmount,
-    int? count, // For simple count cards
+    int? count,
+    required bool isDarkMode,
   }) {
     return Card(
+
       elevation: 4,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
       ),
-      color: cardColor,
+      color: isDarkMode ? Colors.grey[800] : cardColor,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -303,9 +399,9 @@ class _EarningScreenState extends State<EarningScreen> {
             const SizedBox(height: 12),
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
-                color: Colors.black54,
+                color: isDarkMode ? Colors.white70 : Colors.black54,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -313,9 +409,9 @@ class _EarningScreenState extends State<EarningScreen> {
             if (isRevenueCard) ...[
               Text(
                 "PKR ${netAmount?.toStringAsFixed(2) ?? '0.00'}",
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
-                  color: Colors.black,
+                  color: isDarkMode ? Colors.white : Colors.black,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -328,31 +424,170 @@ class _EarningScreenState extends State<EarningScreen> {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-            ] else
-              ...[
-                Text(
-                  count?.toString() ?? '0',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    color: Colors.black,
-                    fontWeight: FontWeight.bold,
-                  ),
+            ] else ...[
+              Text(
+                count?.toString() ?? '0',
+                style: TextStyle(
+                  fontSize: 18,
+                  color: isDarkMode ? Colors.white : Colors.black,
+                  fontWeight: FontWeight.bold,
                 ),
-              ],
+              ),
+            ],
           ],
         ),
       ),
     );
   }
 
+  Widget _buildChart(bool isDarkMode) {
+    final spots = selectedPeriod == "Weekly" ? weeklySpots : monthlySpots;
+    final labels = selectedPeriod == "Weekly" ? weeklyLabels : monthlyLabels;
+
+    if (spots.isEmpty) {
+      return Container(
+        height: 300,
+        child: Center(
+          child: Text(
+            "No sales data available",
+            style: TextStyle(
+              fontSize: 16,
+              color: isDarkMode ? Colors.white70 : Colors.black54,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      height: 300,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          const SizedBox(height: 1),
+          Expanded(
+            child: LineChart(
+              LineChartData(
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: true,
+                  drawHorizontalLine: true,
+                  getDrawingHorizontalLine: (value) {
+                    return FlLine(
+                      color: isDarkMode ? Colors.grey.withOpacity(0.1) : Colors.grey.withOpacity(0.3),
+                      strokeWidth: 1,
+                    );
+                  },
+                  getDrawingVerticalLine: (value) {
+                    return FlLine(
+                      color: isDarkMode ? Colors.grey.withOpacity(0.1) : Colors.grey.withOpacity(0.3),
+                      strokeWidth: 1,
+                    );
+                  },
+                ),
+                titlesData: FlTitlesData(
+                  show: true,
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (value, meta) {
+                        if (value.toInt() >= 0 && value.toInt() < labels.length) {
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              labels[value.toInt()],
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isDarkMode ? Colors.white70 : Colors.black54,
+                              ),
+                            ),
+                          );
+                        }
+                        return const Text('');
+                      },
+                      reservedSize: 22,
+                      interval: 1,
+                    ),
+                  ),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (value, meta) {
+                        if (value % 50 == 0) {
+                          return Text(
+                            value.toInt().toString(),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDarkMode ? Colors.white70 : Colors.black54,
+                            ),
+                          );
+                        }
+                        return const Text('');
+                      },
+                      reservedSize: 32,
+                      interval: 50,
+                    ),
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                ),
+                borderData: FlBorderData(
+                  show: true,
+                  border: Border(
+                    bottom: BorderSide(color: isDarkMode ? Colors.grey.withOpacity(0.3) : Colors.black26, width: 1),
+                    left: BorderSide(color: isDarkMode ? Colors.grey.withOpacity(0.3) : Colors.black26, width: 1),
+                    right: BorderSide(color: Colors.transparent),
+                    top: BorderSide(color: Colors.transparent),
+                  ),
+                ),
+                minX: 0,
+                maxX: (spots.length - 1).toDouble(),
+                minY: 0,
+                maxY: 300,
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: spots,
+                    isCurved: false,
+                    color: const Color(0xFFFF4A49),
+                    barWidth: 3,
+                    isStrokeCapRound: true,
+                    dotData: FlDotData(
+                      show: true,
+                      getDotPainter: (spot, percent, barData, index) {
+                        return FlDotCirclePainter(
+                          radius: 3,
+                          color: const Color(0xFFFF4A49),
+                          strokeWidth: 2,
+                          strokeColor: isDarkMode ? Colors.grey[900]! : Colors.white,
+                        );
+                      },
+                    ),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      color: const Color(0xFFFF4A49).withOpacity(0.2),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final bool isDarkMode = Theme
-        .of(context)
-        .brightness == Brightness.dark;
+    final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final Color primaryColor = isDarkMode ? Colors.grey[900]! : const Color(0xFFF8F9FA);
+    final Color textColor = isDarkMode ? Colors.white : Colors.black;
 
     return Scaffold(
-      backgroundColor: isDarkMode ? Colors.grey[900] : Color(0xFFF8F9FA),
+      backgroundColor: primaryColor,
       appBar: AppBar(
         elevation: 0,
         backgroundColor: const Color(0xFFFF4A49),
@@ -373,7 +608,11 @@ class _EarningScreenState extends State<EarningScreen> {
         ),
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(const Color(0xFFFF4A49)),
+        ),
+      )
           : SingleChildScrollView(
         padding: const EdgeInsets.all(9),
         child: Column(
@@ -388,6 +627,7 @@ class _EarningScreenState extends State<EarningScreen> {
                     title: "Total Orders",
                     isRevenueCard: false,
                     count: totalOrders,
+                    isDarkMode: isDarkMode,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -399,6 +639,7 @@ class _EarningScreenState extends State<EarningScreen> {
                     title: "Total Products",
                     isRevenueCard: false,
                     count: totalProducts,
+                    isDarkMode: isDarkMode,
                   ),
                 ),
               ],
@@ -415,6 +656,7 @@ class _EarningScreenState extends State<EarningScreen> {
                     isRevenueCard: true,
                     grossAmount: totalRevenue,
                     netAmount: totalRevenueAfterCommission,
+                    isDarkMode: isDarkMode,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -427,10 +669,64 @@ class _EarningScreenState extends State<EarningScreen> {
                     isRevenueCard: true,
                     grossAmount: thisMonthEarning,
                     netAmount: thisMonthEarningAfterCommission,
+                    isDarkMode: isDarkMode,
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "Sales Report",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: textColor,
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Text(
+                        "Period : ",
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: isDarkMode ? Colors.white70 : Colors.black54,
+                        ),
+                      ),
+                      DropdownButton<String>(
+                        value: selectedPeriod,
+                        underline: Container(),
+                        icon: Icon(Icons.arrow_drop_down, color: isDarkMode ? Colors.white70 : Colors.black54),
+                        items: <String>['Weekly', 'Monthly']
+                            .map<DropdownMenuItem<String>>((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(
+                              value,
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: isDarkMode ? Colors.white : Colors.black,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            selectedPeriod = newValue!;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            _buildChart(isDarkMode),
           ],
         ),
       ),
