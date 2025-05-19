@@ -2,40 +2,38 @@ import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:get/get.dart';
 
-class SellerManagementPage extends StatefulWidget {
-  const SellerManagementPage({super.key});
+class CustomerManagementPage extends StatefulWidget {
+  const CustomerManagementPage({super.key});
 
   @override
-  State<SellerManagementPage> createState() => _SellerManagementPageState();
+  State<CustomerManagementPage> createState() => _CustomerManagementPageState();
 }
 
-class _SellerManagementPageState extends State<SellerManagementPage> {
+class _CustomerManagementPageState extends State<CustomerManagementPage> {
   final DatabaseReference _database = FirebaseDatabase.instance.ref().child('users');
-  final List<Map<String, dynamic>> _vendorList = [];
+  final List<Map<String, dynamic>> _customerList = [];
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _fetchVendors();
+    _fetchCustomers();
   }
 
-  void _fetchVendors() {
+  void _fetchCustomers() {
     setState(() => _isLoading = true);
-    _database.orderByChild('role').equalTo('Vendor').onValue.listen((event) {
+    _database.orderByChild('role').equalTo('Customer').onValue.listen((event) {
       final data = event.snapshot.value as Map<dynamic, dynamic>?;
 
-      _vendorList.clear();
+      _customerList.clear();
       if (data != null) {
         data.forEach((key, value) {
-          _vendorList.add({
+          _customerList.add({
             "userId": key,
             "fullName": value["fullName"] ?? "No Name",
             "email": value["email"] ?? "No Email",
-            "businessName": value["businessName"] ?? "N/A",
             "phoneNumber": value["phoneNumber"]?.toString() ?? "N/A",
             "address": value["address"] ?? "N/A",
-            "status": value["status"] ?? "pending",
           });
         });
       }
@@ -44,7 +42,7 @@ class _SellerManagementPageState extends State<SellerManagementPage> {
       setState(() => _isLoading = false);
       Get.snackbar(
         "Error",
-        "Failed to load vendors: ${error.toString()}",
+        "Failed to load customers: ${error.toString()}",
         snackPosition: SnackPosition.TOP,
         backgroundColor: Colors.white,
         colorText: Colors.black,
@@ -52,18 +50,15 @@ class _SellerManagementPageState extends State<SellerManagementPage> {
     });
   }
 
-  Future<void> _updateSellerStatus(String userId, String newStatus) async {
+  Future<void> _removeCustomer(String userId) async {
     try {
-      await _database.child(userId).update({'status': newStatus});
-      final index = _vendorList.indexWhere((v) => v['userId'] == userId);
-      if (index != -1) {
-        setState(() {
-          _vendorList[index]['status'] = newStatus;
-        });
-      }
+      await _database.child(userId).remove();
+      setState(() {
+        _customerList.removeWhere((customer) => customer['userId'] == userId);
+      });
       Get.snackbar(
         "Success",
-        "Status updated successfully",
+        "Customer removed successfully",
         snackPosition: SnackPosition.TOP,
         backgroundColor: Colors.white,
         colorText: Colors.black,
@@ -76,7 +71,7 @@ class _SellerManagementPageState extends State<SellerManagementPage> {
     } catch (e) {
       Get.snackbar(
         "Error",
-        "Update failed",
+        "Failed to remove customer",
         snackPosition: SnackPosition.TOP,
         backgroundColor: Colors.white,
         colorText: Colors.black,
@@ -84,17 +79,12 @@ class _SellerManagementPageState extends State<SellerManagementPage> {
     }
   }
 
-  String _capitalizeFirstLetter(String input) {
-    if (input.isEmpty) return input;
-    return input[0].toUpperCase() + input.substring(1).toLowerCase();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'Vendors',
+          'Customers',
           style: TextStyle(
             fontWeight: FontWeight.w700,
             fontSize: 18,
@@ -116,13 +106,13 @@ class _SellerManagementPageState extends State<SellerManagementPage> {
           valueColor: AlwaysStoppedAnimation<Color>(const Color(0xFFFF4A49)),
         ),
       )
-          : _vendorList.isEmpty
+          : _customerList.isEmpty
           ? Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              'No Vendors Found',
+              'No Customers Found',
               style: TextStyle(
                 fontSize: 18,
                 fontFamily: 'Poppins',
@@ -188,12 +178,6 @@ class _SellerManagementPageState extends State<SellerManagementPage> {
                                   fontFamily: 'Poppins',
                                   fontWeight: FontWeight.bold))),
                       DataColumn(
-                          label: Text('Business Name',
-                              style: TextStyle(
-                                  fontSize: 15,
-                                  fontFamily: 'Poppins',
-                                  fontWeight: FontWeight.bold))),
-                      DataColumn(
                           label: Text('Phone Number',
                               style: TextStyle(
                                   fontSize: 15,
@@ -206,100 +190,45 @@ class _SellerManagementPageState extends State<SellerManagementPage> {
                                   fontFamily: 'Poppins',
                                   fontWeight: FontWeight.bold))),
                       DataColumn(
-                          label: Text('Status',
-                              style: TextStyle(
-                                  fontSize: 15,
-                                  fontFamily: 'Poppins',
-                                  fontWeight: FontWeight.bold))),
-                      DataColumn(
                           label: Text('Action',
                               style: TextStyle(
                                   fontSize: 15,
                                   fontFamily: 'Poppins',
                                   fontWeight: FontWeight.bold))),
                     ],
-                    rows: _vendorList.asMap().entries.map((entry) {
+                    rows: _customerList.asMap().entries.map((entry) {
                       final index = entry.key + 1;
-                      final vendor = entry.value;
+                      final customer = entry.value;
                       return DataRow(
                         cells: [
                           DataCell(Text(index.toString(),
                               style: const TextStyle(
                                   fontSize: 15, fontFamily: 'Poppins'))),
-                          DataCell(Text(vendor['fullName'],
+                          DataCell(Text(customer['fullName'],
                               style: const TextStyle(
                                   fontSize: 15, fontFamily: 'Poppins'))),
-                          DataCell(Text(vendor['email'],
+                          DataCell(Text(customer['email'],
                               style: const TextStyle(
                                   fontSize: 15, fontFamily: 'Poppins'))),
-                          DataCell(Text(vendor['businessName'],
+                          DataCell(Text(customer['phoneNumber'],
                               style: const TextStyle(
                                   fontSize: 15, fontFamily: 'Poppins'))),
-                          DataCell(Text(vendor['phoneNumber'],
-                              style: const TextStyle(
-                                  fontSize: 15, fontFamily: 'Poppins'))),
-                          DataCell(Text(vendor['address'],
+                          DataCell(Text(customer['address'],
                               style: const TextStyle(
                                   fontSize: 15, fontFamily: 'Poppins'))),
                           DataCell(
-                            Row(
-                              children: [
-                                Container(
-                                  width: 10,
-                                  height: 10,
-                                  decoration: BoxDecoration(
-                                    color: _getStatusColor(
-                                        vendor['status']),
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  _capitalizeFirstLetter(
-                                      vendor['status']),
-                                  style: TextStyle(
-                                      fontSize: 15,
-                                      color: _getStatusColor(
-                                          vendor['status']),
-                                      fontWeight: FontWeight.w500,
-                                      fontFamily: 'Poppins'),
-                                ),
-                              ],
-                            ),
-                          ),
-                          DataCell(
-                            DropdownButton<String>(
-                              value: vendor['status'],
-                              underline: const SizedBox(),
-                              items: const [
-                                DropdownMenuItem(
-                                  value: 'approved',
-                                  child: Text('Approved',
-                                      style: TextStyle(
-                                          fontSize: 15,
-                                          fontFamily: 'Poppins')),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'rejected',
-                                  child: Text('Rejected',
-                                      style: TextStyle(
-                                          fontSize: 15,
-                                          fontFamily: 'Poppins')),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'pending',
-                                  child: Text('Pending',
-                                      style: TextStyle(
-                                          fontSize: 15,
-                                          fontFamily: 'Poppins')),
-                                ),
-                              ],
-                              onChanged: (value) {
-                                if (value != null) {
-                                  _updateSellerStatus(
-                                      vendor['userId'], value);
-                                }
+                            TextButton(
+                              onPressed: () {
+                                _removeCustomer(customer['userId']);
                               },
+                              child: const Text(
+                                'Remove',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontFamily: 'Poppins',
+                                  color: Colors.red,
+                                ),
+                              ),
                             ),
                           ),
                         ],
@@ -313,17 +242,5 @@ class _SellerManagementPageState extends State<SellerManagementPage> {
         ),
       ),
     );
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'approved':
-        return Colors.green.shade600;
-      case 'rejected':
-        return Colors.red.shade600;
-      case 'pending':
-      default:
-        return Colors.orange.shade600;
-    }
   }
 }

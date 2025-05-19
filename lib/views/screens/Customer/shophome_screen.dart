@@ -6,6 +6,7 @@ import 'package:get/get_core/src/get_main.dart';
 import 'package:multi_vendor_ecommerce_app/views/screens/Admin/sidebar_screen/widget/banner_widget_home.dart';
 import 'package:multi_vendor_ecommerce_app/views/screens/innerscreens/searchscreen.dart';
 import '../../../controllers/auth_controller.dart';
+import '../Seller/customerchatlist.dart';
 import '../innerscreens/ProductInfo.dart';
 import '../innerscreens/category_product.dart';
 import 'cart_screen.dart';
@@ -23,6 +24,7 @@ class _ShopHomeState extends State<ShopHome> {
   final TextEditingController _searchController = TextEditingController();
   final DatabaseReference _categoriesRef = FirebaseDatabase.instance.ref('categories');
   final DatabaseReference _favoritesRef = FirebaseDatabase.instance.ref('favourites');
+  final String customerId = FirebaseAuth.instance.currentUser!.uid;
   List<Map<String, dynamic>> categories = [];
   List<Map<String, dynamic>> latestProducts = [];
   List<Map<String, dynamic>> allProducts = [];//new
@@ -32,6 +34,8 @@ class _ShopHomeState extends State<ShopHome> {
   final DatabaseReference _cartRef = FirebaseDatabase.instance.ref('carts');
   late User? _currentUser;
   bool isSearching = false;
+  int totalUnreadCount = 0;
+
 
 
   @override
@@ -43,6 +47,7 @@ class _ShopHomeState extends State<ShopHome> {
     _fetchCategories();
     _fetchLatestProducts();
     _loadFavorites(); // Add this line
+    _setupChatListener();
   }
 
   void getUserName() async {
@@ -64,6 +69,33 @@ class _ShopHomeState extends State<ShopHome> {
         setState(() => cartItemCount = totalItems);
       } else {
         setState(() => cartItemCount = 0);
+      }
+    });
+  }
+
+  void _setupChatListener() {
+    FirebaseDatabase.instance.ref('chats').onValue.listen((event) {
+      if (event.snapshot.exists) {
+        int total = 0;
+        final chats = event.snapshot.value as Map<dynamic, dynamic>;
+
+        chats.forEach((chatId, messages) {
+          if (messages is Map) {
+            messages.forEach((messageId, message) {
+              if (message is Map &&
+                  message['receiverId'] == customerId &&
+                  (message['isSeen'] == null || message['isSeen'] == false)) {
+                total++;
+              }
+            });
+          }
+        });
+
+        if (mounted) {
+          setState(() {
+            totalUnreadCount = total;
+          });
+        }
       }
     });
   }
@@ -239,58 +271,122 @@ class _ShopHomeState extends State<ShopHome> {
                 fontFamily: 'Poppins',
               ),
             ),
-            Stack(
-              clipBehavior: Clip.none,
+            Row(
               children: [
-                IconButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      PageRouteBuilder(
-                        pageBuilder: (context, animation, secondaryAnimation) => const CartScreen(),
-                        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                          return FadeTransition(opacity: animation, child: child); // Example transition
-                        },
-                        transitionDuration: const Duration(milliseconds: 300), // Optional: You can adjust the transition duration
+                // Chat Icon with unread count
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    IconButton(
+                      splashColor: Colors.transparent, // Removes ripple
+                      highlightColor: Colors.transparent, // Removes tap highlight
+                      onPressed: () async {
+                        final result = await Navigator.push(
+                          context,
+                          PageRouteBuilder(
+                            pageBuilder: (context, animation, secondaryAnimation) =>
+                                CustomerChatListScreen(customerId: customerId),
+                            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                              return FadeTransition(opacity: animation, child: child);
+                            },
+                          ),
+                        );
+                        setState(() {
+                          totalUnreadCount = result ?? totalUnreadCount;
+                        });
+                      },
+                      icon: Transform.translate(
+                        offset: Offset(20, 0),
+                        child: Icon(Icons.chat, color: Colors.white, size: 20),
                       ),
-                    );
-                  },
+                    ),
 
-                  icon: Container(
-                    padding: const EdgeInsets.all(8),
-                    child: Icon(
-                      Icons.shopping_cart,
-                      color: isDarkMode ? Colors.white : Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                ),
-                if (cartItemCount > 0)
-                  Positioned(
-                    top: 3,
-                    right: 4,
-                    child: Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        color: Colors.green,
-                        shape: BoxShape.circle,
-                      ),
-                      constraints: BoxConstraints(
-                        minWidth: 16,
-                        minHeight: 16,
-                      ),
-                      child: Text(
-                        cartItemCount.toString(),
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'Poppins',
+
+                    if (totalUnreadCount > 0)
+                      Positioned(
+                        top: 2,
+                        right: -16, // Changed from 28 to 4 to position it above the icon
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: Colors.green,
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          child: Text(
+                            totalUnreadCount > 9 ? '9+' : totalUnreadCount.toString(),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
                         ),
-                        textAlign: TextAlign.center,
+                      ),
+                  ],
+                ),
+
+                // Existing Cart Icon with counter
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    IconButton(
+                      splashColor: Colors.transparent,
+                      highlightColor: Colors.transparent,
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          PageRouteBuilder(
+                            pageBuilder: (context, animation, secondaryAnimation) => const CartScreen(),
+                            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                              return FadeTransition(opacity: animation, child: child);
+                            },
+                            transitionDuration: const Duration(milliseconds: 300),
+                          ),
+                        );
+                      },
+                      icon: Container(
+                        padding: const EdgeInsets.all(8),
+                        child: Icon(
+                          Icons.shopping_cart,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                       ),
                     ),
-                  ),
+
+                    if (cartItemCount > 0)
+                      Positioned(
+                        top: 5,
+                        right: 6,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: Colors.green,
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          child: Text(
+                            cartItemCount.toString(),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'Poppins',
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ],
             ),
           ],

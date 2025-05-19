@@ -5,6 +5,8 @@ import 'package:multi_vendor_ecommerce_app/controllers/auth_controller.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 
+import 'Vendorschatlistscreen.dart';
+
 class EarningScreen extends StatefulWidget {
   const EarningScreen({super.key});
 
@@ -17,10 +19,12 @@ class _EarningScreenState extends State<EarningScreen> {
   final DatabaseReference _dbRef = FirebaseDatabase.instance.ref();
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+
   String userName = "Vendor";
   String vendorId = "";
   bool isLoading = true;
   String selectedPeriod = "Weekly";
+  int _unreadChatCount = 0;
 
   int totalOrders = 0;
   int totalProducts = 0;
@@ -41,6 +45,10 @@ class _EarningScreenState extends State<EarningScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadVendorData();
+    });
+    _fetchUnreadCount();
+    FirebaseDatabase.instance.ref('chats').onChildChanged.listen((_) {
+      _fetchUnreadCount();
     });
   }
 
@@ -106,6 +114,34 @@ class _EarningScreenState extends State<EarningScreen> {
       }
     }
   }
+
+  Future<void> _fetchUnreadCount() async {
+    try {
+      final snapshot = await FirebaseDatabase.instance.ref('chats').once();
+      final data = snapshot.snapshot.value as Map<dynamic, dynamic>?;
+      int totalUnread = 0;
+
+      if (data != null) {
+        for (var chat in data.values) {
+          final messages = chat as Map<dynamic, dynamic>;
+          for (var message in messages.values) {
+            final msg = message as Map<dynamic, dynamic>;
+            if (msg['receiverId'] == vendorId && (msg['isSeen'] ?? false) == false) {
+              totalUnread++;
+            }
+          }
+        }
+      }
+
+      setState(() {
+        _unreadChatCount = totalUnread;
+      });
+    } catch (e) {
+      debugPrint('Error fetching unread count: $e');
+    }
+  }
+
+
 
   Future<void> _fetchTotalOrders() async {
     final snapshot = await _dbRef.child('orders').once();
@@ -588,25 +624,81 @@ class _EarningScreenState extends State<EarningScreen> {
 
     return Scaffold(
       backgroundColor: primaryColor,
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: const Color(0xFFFF4A49),
-        automaticallyImplyLeading: false,
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              "Hi, $userName! 👋",
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                fontFamily: 'Poppins',
-              ),
+
+// Update your app bar like this:
+    appBar: AppBar(
+    elevation: 0,
+      backgroundColor: const Color(0xFFFF4A49),
+      automaticallyImplyLeading: false,
+      title: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            "Hi, $userName! 👋",
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              fontFamily: 'Poppins',
             ),
-          ],
-        ),
+          ),
+          Stack(
+            children: [
+              IconButton(
+                onPressed: () async {
+                  final result = await Navigator.push(
+                    context,
+                    PageRouteBuilder(
+                      pageBuilder: (context, animation, secondaryAnimation) =>
+                          VendorChatListScreen(vendorId: vendorId),
+                      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                        return FadeTransition(opacity: animation, child: child);
+                      },
+                    ),
+                  );
+                  // Update the count when returning from chat screen
+                  if (result != null) {
+                    setState(() {
+                      _unreadChatCount = result;
+                    });
+                  }
+                },
+                icon: const Icon(
+                  Icons.chat,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+              if (_unreadChatCount > 0)
+                Positioned(
+                  right: 8,
+                  top: 4,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: Color(0xFF2E7D32),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
+                    child: Text(
+                      '$_unreadChatCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
       ),
+    ),
       body: isLoading
           ? Center(
         child: CircularProgressIndicator(

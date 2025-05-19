@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 
 import '../Admin/sidebar_screen/widget/quntity.dart';
+import '../chatscreen.dart';
 
 class ProductInfo extends StatefulWidget {
   final String productId;
@@ -1010,8 +1011,43 @@ class _ProductInfoState extends State<ProductInfo> {
                 ),
                 onPressed: () {
                   print('Message button pressed');
+
+                  final currentUser = FirebaseAuth.instance.currentUser;
+                  final customerId = currentUser?.uid;
+                  final vendorId = this.vendorId; // Use state's vendorId
+
+                  print('Customer ID: $customerId');
+                  print('Vendor ID: $vendorId');
+
+                  if (customerId != null && vendorId.isNotEmpty && customerId != vendorId) {
+                    final chatId = customerId.hashCode <= vendorId.hashCode
+                        ? '${customerId}_$vendorId'
+                        : '${vendorId}_$customerId';
+
+                    print('Chat ID: $chatId');
+
+                    Navigator.push(
+                      context,
+                      PageRouteBuilder(
+                        pageBuilder: (context, animation, secondaryAnimation) => ChatScreen(
+                          chatId: chatId,
+                          senderId: customerId,
+                          receiverId: vendorId,
+                        ), // Replace with your chat screen
+                        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                          return FadeTransition(opacity: animation, child: child);
+                        },
+                        transitionDuration: const Duration(milliseconds: 300),
+                      ),
+                    );
+
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Unable to start chat.')),
+                    );
+                  }
                 },
-              ),
+              )
             ],
           ),
         ],

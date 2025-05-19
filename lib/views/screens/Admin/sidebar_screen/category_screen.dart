@@ -3,7 +3,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:get/get.dart';
 
 class CategoryScreen extends StatefulWidget {
   @override
@@ -18,6 +18,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
   dynamic image;
   String? fileName;
   List<Map<String, String>> existingCategories = [];
+  bool isLoading = false;
 
   @override
   void initState() {
@@ -26,7 +27,10 @@ class _CategoryScreenState extends State<CategoryScreen> {
   }
 
   void fetchExistingCategories() async {
-    EasyLoading.show(status: 'Loading...'); // Show loading indicator
+    setState(() {
+      isLoading = true;
+    });
+
     DatabaseReference ref = _database.ref("categories");
     ref.once().then((DatabaseEvent event) {
       if (event.snapshot.value != null && event.snapshot.value is Map<dynamic, dynamic>) {
@@ -46,10 +50,20 @@ class _CategoryScreenState extends State<CategoryScreen> {
           existingCategories = [];
         });
       }
-      EasyLoading.dismiss(); // Hide loading indicator
+      setState(() {
+        isLoading = false;
+      });
     }).catchError((e) {
-      EasyLoading.dismiss(); // Hide loading indicator on error
-      print("Error fetching categories: $e");
+      setState(() {
+        isLoading = false;
+      });
+      Get.snackbar(
+        "Error",
+        "Error fetching categories: $e",
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: Colors.white,
+        colorText: Colors.black,
+      );
     });
   }
 
@@ -107,13 +121,24 @@ class _CategoryScreenState extends State<CategoryScreen> {
   }
 
   uploadCategoryToDatabase({String? key}) async {
-    EasyLoading.show(status: 'Uploading...', maskType: EasyLoadingMaskType.black);
+    setState(() {
+      isLoading = true;
+    });
 
     String categoryName = categoryController.text.trim();
     String? validationMessage = validateCategoryName(categoryName, currentKey: key);
 
     if (validationMessage != null) {
-      EasyLoading.showError(validationMessage);
+      Get.snackbar(
+        "Error",
+        validationMessage,
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: Colors.white,
+        colorText: Colors.black,
+      );
+      setState(() {
+        isLoading = false;
+      });
       return;
     }
 
@@ -122,7 +147,16 @@ class _CategoryScreenState extends State<CategoryScreen> {
       if (image != null) {
         imageUrl = await uploadCategoryImage(image);
         if (imageUrl == null) {
-          EasyLoading.showError('Failed to upload image');
+          Get.snackbar(
+            "Error",
+            "Failed to upload image",
+            snackPosition: SnackPosition.TOP,
+            backgroundColor: Colors.white,
+            colorText: Colors.black,
+          );
+          setState(() {
+            isLoading = false;
+          });
           return;
         }
       } else if (key != null) {
@@ -131,7 +165,16 @@ class _CategoryScreenState extends State<CategoryScreen> {
       }
 
       if (imageUrl == null) {
-        EasyLoading.showError('Please select an image');
+        Get.snackbar(
+          "Error",
+          "Please select an image",
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: Colors.white,
+          colorText: Colors.black,
+        );
+        setState(() {
+          isLoading = false;
+        });
         return;
       }
 
@@ -147,33 +190,78 @@ class _CategoryScreenState extends State<CategoryScreen> {
         'image': imageUrl,
       });
 
-      EasyLoading.showSuccess('Upload Complete');
-
-      // Refresh the list immediately
-      fetchExistingCategories();
+      Get.snackbar(
+        "Success",
+        key == null ? "Category added successfully" : "Category updated successfully",
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: Colors.white,
+        colorText: Colors.black,
+        icon: const Icon(Icons.check_circle, color: Colors.green, size: 30),
+        shouldIconPulse: false,
+        snackStyle: SnackStyle.FLOATING,
+        isDismissible: true,
+        margin: const EdgeInsets.all(10),
+      );
 
       clearForm();
+      fetchExistingCategories();
     } catch (e) {
-      EasyLoading.showError('Error: $e');
-    } finally {
-      EasyLoading.dismiss();
+      Get.snackbar(
+        "Error",
+        "Error: $e",
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: Colors.white,
+        colorText: Colors.black,
+      );
+      setState(() {
+        isLoading = false;
+      });
     }
   }
 
   void clearForm() {
     setState(() {
       image = null;
+      fileName = null;
       categoryController.clear();
     });
   }
 
-  void deleteCategory(String key) async {
+  void deleteCategory(String key, String imageUrl) async {
+    setState(() {
+      isLoading = true;
+    });
+
     try {
       await _database.ref("categories").child(key).remove();
-      EasyLoading.showSuccess('Category Deleted');
+      Reference ref = storage.refFromURL(imageUrl);
+      await ref.delete();
+
+      Get.snackbar(
+        "Success",
+        "Category deleted successfully",
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: Colors.white,
+        colorText: Colors.black,
+        icon: const Icon(Icons.check_circle, color: Colors.green, size: 30),
+        shouldIconPulse: false,
+        snackStyle: SnackStyle.FLOATING,
+        isDismissible: true,
+        margin: const EdgeInsets.all(10),
+      );
+
       fetchExistingCategories();
     } catch (e) {
-      EasyLoading.showError('Error: $e');
+      Get.snackbar(
+        "Error",
+        "Error deleting category: $e",
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: Colors.white,
+        colorText: Colors.black,
+      );
+      setState(() {
+        isLoading = false;
+      });
     }
   }
 
@@ -183,6 +271,8 @@ class _CategoryScreenState extends State<CategoryScreen> {
       setState(() {
         image = null; // Reset image to allow re-upload
       });
+    } else {
+      clearForm();
     }
 
     showDialog(
@@ -196,9 +286,9 @@ class _CategoryScreenState extends State<CategoryScreen> {
               ),
               title: Center(
                 child: Text(
-                  category == null ? 'Upload Category' : 'Edit Category',
+                  category == null ? 'Add Category' : 'Edit Category',
                   style: TextStyle(
-                    fontFamily: 'Lora',
+                    fontFamily: 'Poppins',
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Colors.black,
@@ -226,7 +316,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                           ),
                         ),
                         child: Center(
-                          child: image == null && category == null
+                          child: image == null && (category == null || category['image'] == null)
                               ? Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -241,7 +331,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                                 style: TextStyle(
                                   color: Colors.grey.shade600,
                                   fontSize: 14,
-                                  fontFamily: 'Lora',
+                                  fontFamily: 'Poppins',
                                 ),
                               ),
                             ],
@@ -257,12 +347,12 @@ class _CategoryScreenState extends State<CategoryScreen> {
                     ),
                     SizedBox(height: 20),
                     SizedBox(
-                      width: MediaQuery.of(context).size.width * 0.6, // Adjust width here
+                      width: MediaQuery.of(context).size.width * 0.6,
                       child: TextFormField(
                         controller: categoryController,
                         decoration: InputDecoration(
                           labelText: 'Category Name',
-                          labelStyle: TextStyle(color: Colors.grey.shade600, fontFamily: 'Lora',),
+                          labelStyle: TextStyle(color: Colors.grey.shade600, fontFamily: 'Poppins'),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
                             borderSide: BorderSide(color: Colors.grey.shade400),
@@ -295,7 +385,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                             style: TextStyle(
                               color: Colors.grey.shade800,
                               fontSize: 16,
-                              fontFamily: 'Lora',
+                              fontFamily: 'Poppins',
                             ),
                           ),
                         ),
@@ -316,7 +406,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 16,
-                              fontFamily: 'Lora',
+                              fontFamily: 'Poppins',
                             ),
                           ),
                         ),
@@ -336,122 +426,131 @@ class _CategoryScreenState extends State<CategoryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
+        title: const Text(
           'Categories',
           style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 22,
-            fontFamily: 'Lora',
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
             color: Colors.white,
+            fontFamily: 'Poppins',
           ),
         ),
         centerTitle: true,
+        backgroundColor: const Color(0xFFFF4A49),
         elevation: 0,
-        backgroundColor: Color(0xFFFF4A49),
-        iconTheme: IconThemeData(
-          color: Colors.white, // Set the back icon color to white
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(height: 10),
-              existingCategories.isEmpty
-                  ? Center(
-                child: Text(
-                  "No Category Found",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontFamily: 'Lora',
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              )
-              :ListView.builder(
-                shrinkWrap: true,
-                physics: NeverScrollableScrollPhysics(),
-                itemCount: existingCategories.length,
-                itemBuilder: (context, index) {
-                  final categoryData = existingCategories[index];
-                  return Card(
-                    elevation: 0.3,
-                    margin: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                    shape: RoundedRectangleBorder(
-                      side: BorderSide(color: Colors.grey.shade300, width: 1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Stack(
-                      children: [
-                        Container(
-                          color: Colors.white,
-                          child: Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                SizedBox(
-                                  height: 40,
-                                  width: 40,
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(10),
-                                    child: Image.network(
-                                      categoryData['image']!,
-                                      fit: BoxFit.cover,
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(width: 16),
-                                Expanded(
-                                  child: Text(
-                                    categoryData['name']!,
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                      fontFamily: 'Lora',
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          top: 4,
-                          right: 5,
-                          child: Row(  // Changed from Column to Row
-                            children: [
-                              IconButton(
-                                icon: Icon(Icons.edit_outlined, color: Colors.grey.shade600),
-                                onPressed: () {
-                                  _showUploadDialog(category: categoryData);
-                                },
-                              ),
-                              SizedBox(width: 1),  // Changed from height to width
-                              IconButton(
-                                icon: Icon(Icons.delete_outline, color: Colors.grey.shade600),
-                                onPressed: () {
-                                  deleteCategory(categoryData['key']!);
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              )
-            ],
-          ),
+      body: isLoading
+          ? Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(const Color(0xFFFF4A49)),
         ),
+      )
+          : Stack(
+        children: [
+          SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 10),
+                  existingCategories.isEmpty
+                      ? Center(
+                    child: Text(
+                      "No Categories Found",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontFamily: 'Poppins',
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  )
+                      : ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: existingCategories.length,
+                    itemBuilder: (context, index) {
+                      final categoryData = existingCategories[index];
+                      return Card(
+                        elevation: 0.3,
+                        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                        shape: RoundedRectangleBorder(
+                          side: BorderSide(color: Colors.grey.shade300, width: 1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Stack(
+                          children: [
+                            Container(
+                              color: Colors.white,
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    SizedBox(
+                                      height: 40,
+                                      width: 40,
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(10),
+                                        child: Image.network(
+                                          categoryData['image']!,
+                                          fit: BoxFit.cover,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Text(
+                                        categoryData['name']!,
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                          fontFamily: 'Poppins',
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              top: 4,
+                              right: 5,
+                              child: Row(
+                                children: [
+                                  IconButton(
+                                    icon: Icon(Icons.edit_outlined, color: Colors.grey.shade600),
+                                    onPressed: () {
+                                      _showUploadDialog(category: categoryData);
+                                    },
+                                  ),
+                                  const SizedBox(width: 1),
+                                  IconButton(
+                                    icon: Icon(Icons.delete_outline, color: Colors.grey.shade600),
+                                    onPressed: () => deleteCategory(categoryData['key']!, categoryData['image']!),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _showUploadDialog,
-        backgroundColor: Color(0xFFFF4A49),
-        child: Icon(Icons.add, color: Colors.white),
+        onPressed: () => _showUploadDialog(),
+        backgroundColor: const Color(0xFFFF4A49),
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }

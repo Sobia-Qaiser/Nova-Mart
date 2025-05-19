@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:multi_vendor_ecommerce_app/views/screens/Admin/admin_dashboard.dart';
+import 'package:multi_vendor_ecommerce_app/views/screens/Admin/sidebar_screen/Customersscreen.dart';
 import 'package:multi_vendor_ecommerce_app/views/screens/Admin/sidebar_screen/category_screen.dart';
 import 'package:multi_vendor_ecommerce_app/views/screens/Admin/sidebar_screen/orders_screen.dart';
 import 'package:multi_vendor_ecommerce_app/views/screens/Admin/sidebar_screen/products_screen.dart';
@@ -54,9 +55,14 @@ class _DrawerContentState extends State<DrawerContent> {
             onTap: () => _navigateTo(AdminDashboard()),
           ),
           _buildSpacedListTile(
-            icon: Icons.person_3,
+            icon: Icons.store,
             title: "Vendors",
             onTap: () => _navigateTo(SellerManagementPage()),
+          ),
+          _buildSpacedListTile(
+            icon: Icons.person_3,
+            title: "Customers",
+            onTap: () => _navigateTo(CustomerManagementPage()),
           ),
           _buildSpacedListTile(
             icon: Icons.attach_money,

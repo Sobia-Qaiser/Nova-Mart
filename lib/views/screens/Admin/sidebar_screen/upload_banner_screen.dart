@@ -3,7 +3,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:get/get.dart';
 
 class UploadBannerScreen extends StatefulWidget {
   @override
@@ -17,6 +17,7 @@ class _UploadBannerScreenState extends State<UploadBannerScreen> {
   dynamic image;
   String? fileName;
   List<Map<String, dynamic>> existingBanners = [];
+  bool isLoading = false;
 
   @override
   void initState() {
@@ -25,7 +26,10 @@ class _UploadBannerScreenState extends State<UploadBannerScreen> {
   }
 
   void fetchExistingBanners() async {
-    EasyLoading.show(status: 'Loading...'); // Show loading indicator
+    setState(() {
+      isLoading = true;
+    });
+
     DatabaseReference ref = _database.ref("banners");
     ref.once().then((DatabaseEvent event) {
       if (event.snapshot.value != null && event.snapshot.value is Map<dynamic, dynamic>) {
@@ -33,15 +37,19 @@ class _UploadBannerScreenState extends State<UploadBannerScreen> {
         setState(() {
           existingBanners = banners.entries.map((entry) {
             return {
-              'key': entry.key, // Store the Firebase key for deletion
+              'key': entry.key,
               'image': entry.value['image'].toString(),
             };
           }).toList();
         });
       }
-      EasyLoading.dismiss(); // Hide loading indicator
+      setState(() {
+        isLoading = false;
+      });
     }).catchError((e) {
-      EasyLoading.dismiss(); // Hide loading indicator on error
+      setState(() {
+        isLoading = false;
+      });
       print("Error fetching banners: $e");
     });
   }
@@ -81,37 +89,73 @@ class _UploadBannerScreenState extends State<UploadBannerScreen> {
   }
 
   uploadToRealDatabase() async {
-    EasyLoading.show(status: 'Uploading...', maskType: EasyLoadingMaskType.black);
+    setState(() {
+      isLoading = true;
+    });
+
     if (image == null) {
-      EasyLoading.showError('Please select an image');
+      Get.snackbar(
+        "Error",
+        "Please select an image",
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: Colors.white,
+        colorText: Colors.black,
+      );
+      setState(() {
+        isLoading = false;
+      });
       return;
     }
 
     try {
       String? imageUrl = await uploadBannerToStorage(image);
       if (imageUrl == null) {
-        EasyLoading.showError('Failed to upload image');
+        Get.snackbar(
+          "Error",
+          "Failed to upload image",
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: Colors.white,
+          colorText: Colors.black,
+        );
+        setState(() {
+          isLoading = false;
+        });
         return;
       }
 
       DatabaseReference ref = _database.ref("banners").push();
       await ref.set({'image': imageUrl});
-      EasyLoading.showSuccess('Upload Complete');
-      print("Data saved in Realtime Database");
+      Get.snackbar(
+        "Success",
+        "Image uploaded successfully",
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: Colors.white,
+        colorText: Colors.black,
+        icon: const Icon(Icons.check_circle, color: Colors.green, size: 30),
+        shouldIconPulse: false,
+        snackStyle: SnackStyle.FLOATING,
+        isDismissible: true,
+        margin: const EdgeInsets.all(10),
+      );
 
-      // Clear the image and refresh the list
       setState(() {
         image = null;
         fileName = null;
+        isLoading = false;
       });
 
-      // Refresh the list of banners
       fetchExistingBanners();
     } catch (e) {
-      EasyLoading.showError('Error: $e');
-      print("Error uploading to database: $e");
-    } finally {
-      EasyLoading.dismiss();
+      Get.snackbar(
+        "Error",
+        "Error uploading to database: $e",
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: Colors.white,
+        colorText: Colors.black,
+      );
+      setState(() {
+        isLoading = false;
+      });
     }
   }
 
@@ -122,28 +166,40 @@ class _UploadBannerScreenState extends State<UploadBannerScreen> {
     });
   }
 
-  // Function to delete a banner
   void deleteBanner(String key, String imageUrl) async {
-    EasyLoading.show(status: 'Deleting...', maskType: EasyLoadingMaskType.black);
+    setState(() {
+      isLoading = true;
+    });
 
     try {
-      // Delete from Firebase Realtime Database
       await _database.ref("banners").child(key).remove();
-
-      // Delete from Firebase Storage
       Reference ref = storage.refFromURL(imageUrl);
       await ref.delete();
+      Get.snackbar(
+        "Success",
+        "Banner deleted successfully",
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: Colors.white,
+        colorText: Colors.black,
+        icon: const Icon(Icons.check_circle, color: Colors.green, size: 30),
+        shouldIconPulse: false,
+        snackStyle: SnackStyle.FLOATING,
+        isDismissible: true,
+        margin: const EdgeInsets.all(10),
+      );
 
-      EasyLoading.showSuccess('Banner Deleted');
-      print("Banner deleted successfully");
-
-      // Refresh the list of banners
       fetchExistingBanners();
     } catch (e) {
-      EasyLoading.showError('Error: $e');
-      print("Error deleting banner: $e");
-    } finally {
-      EasyLoading.dismiss();
+      Get.snackbar(
+        "Error",
+        "Error deleting banner: $e",
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: Colors.white,
+        colorText: Colors.black,
+      );
+      setState(() {
+        isLoading = false;
+      });
     }
   }
 
@@ -151,106 +207,115 @@ class _UploadBannerScreenState extends State<UploadBannerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
+        title: const Text(
           'Banners',
           style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 22,
-            fontFamily: 'Lora',
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
             color: Colors.white,
+            fontFamily: 'Poppins',
           ),
         ),
         centerTitle: true,
+        backgroundColor: const Color(0xFFFF4A49),
         elevation: 0,
-        backgroundColor: Color(0xFFFF4A49),
-        iconTheme: IconThemeData(
-          color: Colors.white, // Set the back icon color to white
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(height: 10),
-              existingBanners.isEmpty
-                  ? Center(
-                child: Text(
-                  "No Banners Found",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontFamily: 'Lora',
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              )
-              :ListView.builder(
-                shrinkWrap: true,
-                physics: NeverScrollableScrollPhysics(),
-                itemCount: existingBanners.length,
-                itemBuilder: (context, index) {
-                  final bannerData = existingBanners[index];
-                  return Card(
-                    elevation: 0.3,
-                    margin: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                    shape: RoundedRectangleBorder(
-                      side: BorderSide(color: Colors.grey.shade300, width: 1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Stack(
-                      children: [
-                        Container(  // Added Container for background color
-                          color: Colors.white,
-                          child: Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                SizedBox(
-                                  height: 40,
-                                  width: 40,
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(10),
-                                    child: Image.network(
-                                      bannerData['image']!,
-                                      fit: BoxFit.cover,
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(width: 16),
-                                Expanded(
-                                  child: Text(
-                                    'Banner ${index + 1}',
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                      fontFamily: 'Lora',
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          top: 4,
-                          right: 5,
-                          child: IconButton(
-                            icon: Icon(Icons.delete_outline, color: Colors.grey.shade600),
-                            onPressed: () {
-                              deleteBanner(bannerData['key'], bannerData['image']);
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              )
-            ],
-          ),
+      body: isLoading
+          ? Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(const Color(0xFFFF4A49)),
         ),
+      )
+          : Stack(
+        children: [
+          SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 10),
+                  existingBanners.isEmpty
+                      ? Center(
+                    child: Text(
+                      "No Banners Found",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontFamily: 'Poppins',
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  )
+                      : ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: existingBanners.length,
+                    itemBuilder: (context, index) {
+                      final bannerData = existingBanners[index];
+                      return Card(
+                        elevation: 0.3,
+                        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                        shape: RoundedRectangleBorder(
+                          side: BorderSide(color: Colors.grey.shade300, width: 1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Stack(
+                          children: [
+                            Container(
+                              color: Colors.white,
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    SizedBox(
+                                      height: 40,
+                                      width: 40,
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(10),
+                                        child: Image.network(
+                                          bannerData['image']!,
+                                          fit: BoxFit.cover,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Text(
+                                        'Banner ${index + 1}',
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.bold,
+                                          fontFamily: 'Poppins',
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              top: 4,
+                              right: 5,
+                              child: IconButton(
+                                icon: Icon(Icons.delete_outline, color: Colors.grey.shade600),
+                                onPressed: () => deleteBanner(bannerData['key'], bannerData['image']),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
@@ -263,11 +328,11 @@ class _UploadBannerScreenState extends State<UploadBannerScreen> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    title: Center(
+                    title: const Center(
                       child: Text(
                         'Upload Banner',
                         style: TextStyle(
-                          fontFamily: 'Lora',
+                          fontFamily: 'Poppins',
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: Colors.black,
@@ -281,7 +346,7 @@ class _UploadBannerScreenState extends State<UploadBannerScreen> {
                           GestureDetector(
                             onTap: () async {
                               await pickImage();
-                              setState(() {}); // Rebuild the dialog to show the image
+                              setState(() {});
                             },
                             child: Container(
                               height: 140,
@@ -299,17 +364,14 @@ class _UploadBannerScreenState extends State<UploadBannerScreen> {
                                     ? Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(
-                                        Icons.add_a_photo,
-                                        size: 30,
-                                        color: Colors.grey.shade600),
-                                    SizedBox(height: 5),
+                                    Icon(Icons.add_a_photo, size: 30, color: Colors.grey.shade600),
+                                    const SizedBox(height: 5),
                                     Text(
                                       'Add Image',
                                       style: TextStyle(
                                         color: Colors.grey.shade600,
                                         fontSize: 14,
-                                        fontFamily: 'Lora',
+                                        fontFamily: 'Poppins',
                                       ),
                                     ),
                                   ],
@@ -321,7 +383,7 @@ class _UploadBannerScreenState extends State<UploadBannerScreen> {
                               ),
                             ),
                           ),
-                          SizedBox(height: 20),
+                          const SizedBox(height: 20),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                             children: [
@@ -332,7 +394,7 @@ class _UploadBannerScreenState extends State<UploadBannerScreen> {
                                 },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.grey.shade300,
-                                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
@@ -342,7 +404,7 @@ class _UploadBannerScreenState extends State<UploadBannerScreen> {
                                   style: TextStyle(
                                     color: Colors.grey.shade800,
                                     fontSize: 16,
-                                    fontFamily: 'Lora',
+                                    fontFamily: 'Poppins',
                                   ),
                                 ),
                               ),
@@ -352,18 +414,18 @@ class _UploadBannerScreenState extends State<UploadBannerScreen> {
                                   uploadToRealDatabase();
                                 },
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Color(0xFFFF4A49),
-                                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                                  backgroundColor: const Color(0xFFFF4A49),
+                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                 ),
-                                child: Text(
+                                child: const Text(
                                   'Save',
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 16,
-                                    fontFamily: 'Lora',
+                                    fontFamily: 'Poppins',
                                   ),
                                 ),
                               ),
@@ -378,8 +440,8 @@ class _UploadBannerScreenState extends State<UploadBannerScreen> {
             },
           );
         },
-        backgroundColor: Color(0xFFFF4A49),
-        child: Icon(Icons.add, color: Colors.white),
+        backgroundColor: const Color(0xFFFF4A49),
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
