@@ -71,10 +71,20 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        title: const Text(
+          'Forgot password',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+            color: Colors.white,
+            fontFamily: 'Poppins',
+          ),
+        ),
+        centerTitle: true,
+        backgroundColor: const Color(0xFFFF4A49),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -85,10 +95,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                "Forgot password",
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
               const SizedBox(height: 10),
               const Text(
                 "Please, enter your email address. You will receive a link to create a new password via email.",

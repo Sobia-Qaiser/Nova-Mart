@@ -214,6 +214,26 @@ class _EarningScreenState extends State<EarningScreen> {
       }
     });
 
+    // Get vendor details from users node
+    final vendorSnapshot = await _dbRef.child('users').child(vendorId).once();
+    if (vendorSnapshot.snapshot.value != null) {
+      final vendorData = vendorSnapshot.snapshot.value as Map<dynamic, dynamic>;
+      final vendorName = vendorData['fullName'] ?? 'Unknown Vendor';
+      final businessName = vendorData['businessName'] ?? 'Unknown Business';
+
+      // Update revenue node
+      await _dbRef.child('revenue').child(vendorId).set({
+        'vendorName': vendorName,
+        'businessName': businessName,
+        'vendorId': vendorId,
+        'totalRevenue': revenue,
+        'totalRevenueAfterCommission': revenueAfterCommission,
+        'thisMonthEarning': thisMonthEarning,
+        'thisMonthEarningAfterCommission': thisMonthEarningAfterCommission,
+        'lastUpdated': DateTime.now().millisecondsSinceEpoch,
+      });
+    }
+
     if (mounted) {
       setState(() {
         totalRevenue = revenue;
@@ -272,6 +292,13 @@ class _EarningScreenState extends State<EarningScreen> {
       earningsAfterCommission += vendorOrderTotal * 0.95;
     });
 
+    // Update revenue node with this month's data
+    await _dbRef.child('revenue').child(vendorId).update({
+      'thisMonthEarning': earnings,
+      'thisMonthEarningAfterCommission': earningsAfterCommission,
+      'lastUpdated': DateTime.now().millisecondsSinceEpoch,
+    });
+
     if (mounted) {
       setState(() {
         thisMonthEarning = earnings;
@@ -279,7 +306,6 @@ class _EarningScreenState extends State<EarningScreen> {
       });
     }
   }
-
   Future<void> _fetchChartData() async {
     final now = DateTime.now();
     final oneWeekAgo = now.subtract(const Duration(days: 7));
@@ -444,8 +470,9 @@ class _EarningScreenState extends State<EarningScreen> {
             const SizedBox(height: 8),
             if (isRevenueCard) ...[
               Text(
-                "PKR ${netAmount?.toStringAsFixed(2) ?? '0.00'}",
-                style: TextStyle(
+                "PKR ${(netAmount ?? 0).toInt()}",
+
+    style: TextStyle(
                   fontSize: 18,
                   color: isDarkMode ? Colors.white : Colors.black,
                   fontWeight: FontWeight.bold,

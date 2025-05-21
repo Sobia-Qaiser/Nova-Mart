@@ -198,17 +198,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           _buildSettingItem(
             context,
-            icon: Icons.notifications_outlined,
-            title: 'Notifications',
-            trailing: Switch(
-              value: _notifications,
-              onChanged: (v) => setState(() => _notifications = v),
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-          ),
-          _buildDivider(context),
-          _buildSettingItem(
-            context,
             icon: Icons.store_mall_directory_outlined,
             title: 'My Store',
             onTap: () {

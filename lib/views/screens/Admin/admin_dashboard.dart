@@ -120,7 +120,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     int vendorCount = 0;
 
     usersMap.forEach((key, value) {
-      if (value['role'] == 'Vendor') {
+      if (value['role'] == 'Vendor' && value['status'] == 'approved') {
         vendorCount++;
       }
     });
@@ -150,7 +150,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
     if (snapshot.snapshot.value == null) return;
 
     final ordersMap = snapshot.snapshot.value as Map<dynamic, dynamic>;
-    double revenue = 0.0;
+    double revenue = 0;
 
     ordersMap.forEach((orderId, orderData) {
       if (orderData['items'] != null) {
@@ -169,10 +169,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
     if (mounted) {
       setState(() {
-        totalRevenue = revenue;
+        totalRevenue = revenue.floorToDouble(); // remove decimal points
       });
     }
   }
+
+
 
   Future<void> _fetchChartData() async {
     final now = DateTime.now();
@@ -332,7 +334,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
             const SizedBox(height: 8),
             Text(
-              "PKR ${totalRevenue.toStringAsFixed(2)}",
+              "PKR ${totalRevenue.toInt()}",
               style: TextStyle(
                 fontSize: 18,
                 color: isDarkMode ? Colors.white : Colors.black,

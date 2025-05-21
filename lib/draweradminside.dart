@@ -22,15 +22,25 @@ class _DrawerContentState extends State<DrawerContent> {
   Future<void> _logout() async {
     try {
       await FirebaseAuth.instance.signOut();
+
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-            (Route<dynamic> route) => false,
+        PageRouteBuilder(
+          pageBuilder: (context, animation, secondaryAnimation) {
+            return const LoginScreen();
+          },
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+        ),
+            (Route<dynamic> route) => false, // removes all previous routes
       );
     } catch (e) {
       // Handle error
+      print('Logout Error: $e');
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -66,14 +76,15 @@ class _DrawerContentState extends State<DrawerContent> {
           ),
           _buildSpacedListTile(
             icon: Icons.attach_money,
-            title: "Withdraw",
-            onTap: () => _navigateTo(WithdrawlScreen()),
+            title: "Revenue",
+            onTap: () => _navigateTo(RevenueScreen()),
           ),
           _buildSpacedListTile(
             icon: Icons.shopping_cart,
             title: "Orders",
-            onTap: () => _navigateTo(OrderScreen()),
+            onTap: () => _navigateTo(OrderManagementPage()),
           ),
+
           _buildSpacedListTile(
             icon: Icons.category,
             title: "Categories",
@@ -82,7 +93,7 @@ class _DrawerContentState extends State<DrawerContent> {
           _buildSpacedListTile(
             icon: Icons.shop,
             title: "Products",
-            onTap: () => _navigateTo(ProductScreen()),
+            onTap: () => _navigateTo(ProductManagementPage()),
           ),
           _buildSpacedListTile(
             icon: Icons.add,

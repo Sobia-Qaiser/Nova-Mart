@@ -114,35 +114,6 @@ class ShoppingScreen extends StatelessWidget {
                 ),
               ),
             ),
-
-            const SizedBox(height: 40),
-
-            // Bottom "Next →" Button (Pink Color)
-            Align(
-              alignment: Alignment.centerRight, // Align text to the right
-              child: GestureDetector(
-                onTap: () {
-                  // Navigate to Next Screen
-                  Navigator.push(
-                    context,
-                    PageRouteBuilder(
-                      pageBuilder: (context, animation, secondaryAnimation) => const SignUpScreen(),
-                      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                        return FadeTransition(opacity: animation, child: child);
-                      },
-                    ),
-                  );
-                },
-                child: const Text(
-                  "Next →",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFFFF4A49), // Pink color
-                  ),
-                ),
-              ),
-            ),
           ],
         ),
       ),

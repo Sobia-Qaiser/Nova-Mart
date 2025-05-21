@@ -12,7 +12,10 @@ class SellerManagementPage extends StatefulWidget {
 class _SellerManagementPageState extends State<SellerManagementPage> {
   final DatabaseReference _database = FirebaseDatabase.instance.ref().child('users');
   final List<Map<String, dynamic>> _vendorList = [];
+  final List<Map<String, dynamic>> _displayedVendors = [];
   bool _isLoading = true;
+  int _currentPage = 1;
+  final int _vendorsPerPage = 10;
 
   @override
   void initState() {
@@ -39,6 +42,7 @@ class _SellerManagementPageState extends State<SellerManagementPage> {
           });
         });
       }
+      _updateDisplayedVendors();
       setState(() => _isLoading = false);
     }).onError((error) {
       setState(() => _isLoading = false);
@@ -52,6 +56,41 @@ class _SellerManagementPageState extends State<SellerManagementPage> {
     });
   }
 
+  void _updateDisplayedVendors() {
+    final startIndex = (_currentPage - 1) * _vendorsPerPage;
+    final endIndex = startIndex + _vendorsPerPage;
+
+    setState(() {
+      _displayedVendors.clear();
+      if (startIndex < _vendorList.length) {
+        _displayedVendors.addAll(
+          _vendorList.sublist(
+            startIndex,
+            endIndex < _vendorList.length ? endIndex : _vendorList.length,
+          ),
+        );
+      }
+    });
+  }
+
+  void _nextPage() {
+    if (_currentPage * _vendorsPerPage < _vendorList.length) {
+      setState(() {
+        _currentPage++;
+        _updateDisplayedVendors();
+      });
+    }
+  }
+
+  void _prevPage() {
+    if (_currentPage > 1) {
+      setState(() {
+        _currentPage--;
+        _updateDisplayedVendors();
+      });
+    }
+  }
+
   Future<void> _updateSellerStatus(String userId, String newStatus) async {
     try {
       await _database.child(userId).update({'status': newStatus});
@@ -59,6 +98,7 @@ class _SellerManagementPageState extends State<SellerManagementPage> {
       if (index != -1) {
         setState(() {
           _vendorList[index]['status'] = newStatus;
+          _updateDisplayedVendors();
         });
       }
       Get.snackbar(
@@ -132,185 +172,220 @@ class _SellerManagementPageState extends State<SellerManagementPage> {
           ],
         ),
       )
-          : Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.grey.shade100, Colors.grey.shade50],
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Scrollbar(
-            thumbVisibility: true,
-            thickness: 8,
-            radius: const Radius.circular(4),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.withOpacity(0.1),
-                        spreadRadius: 2,
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      )
-                    ],
-                  ),
-                  child: DataTable(
-                    headingRowColor:
-                    MaterialStateProperty.resolveWith<Color>(
-                            (states) => Colors.pink.shade50),
-                    columnSpacing: 30,
-                    horizontalMargin: 20,
-                    columns: const [
-                      DataColumn(
-                          label: Text('Sr#',
-                              style: TextStyle(
-                                  fontSize: 15,
-                                  fontFamily: 'Poppins',
-                                  fontWeight: FontWeight.bold))),
-                      DataColumn(
-                          label: Text('Full Name',
-                              style: TextStyle(
-                                  fontSize: 15,
-                                  fontFamily: 'Poppins',
-                                  fontWeight: FontWeight.bold))),
-                      DataColumn(
-                          label: Text('Email',
-                              style: TextStyle(
-                                  fontSize: 15,
-                                  fontFamily: 'Poppins',
-                                  fontWeight: FontWeight.bold))),
-                      DataColumn(
-                          label: Text('Business Name',
-                              style: TextStyle(
-                                  fontSize: 15,
-                                  fontFamily: 'Poppins',
-                                  fontWeight: FontWeight.bold))),
-                      DataColumn(
-                          label: Text('Phone Number',
-                              style: TextStyle(
-                                  fontSize: 15,
-                                  fontFamily: 'Poppins',
-                                  fontWeight: FontWeight.bold))),
-                      DataColumn(
-                          label: Text('Address',
-                              style: TextStyle(
-                                  fontSize: 15,
-                                  fontFamily: 'Poppins',
-                                  fontWeight: FontWeight.bold))),
-                      DataColumn(
-                          label: Text('Status',
-                              style: TextStyle(
-                                  fontSize: 15,
-                                  fontFamily: 'Poppins',
-                                  fontWeight: FontWeight.bold))),
-                      DataColumn(
-                          label: Text('Action',
-                              style: TextStyle(
-                                  fontSize: 15,
-                                  fontFamily: 'Poppins',
-                                  fontWeight: FontWeight.bold))),
-                    ],
-                    rows: _vendorList.asMap().entries.map((entry) {
-                      final index = entry.key + 1;
-                      final vendor = entry.value;
-                      return DataRow(
-                        cells: [
-                          DataCell(Text(index.toString(),
-                              style: const TextStyle(
-                                  fontSize: 15, fontFamily: 'Poppins'))),
-                          DataCell(Text(vendor['fullName'],
-                              style: const TextStyle(
-                                  fontSize: 15, fontFamily: 'Poppins'))),
-                          DataCell(Text(vendor['email'],
-                              style: const TextStyle(
-                                  fontSize: 15, fontFamily: 'Poppins'))),
-                          DataCell(Text(vendor['businessName'],
-                              style: const TextStyle(
-                                  fontSize: 15, fontFamily: 'Poppins'))),
-                          DataCell(Text(vendor['phoneNumber'],
-                              style: const TextStyle(
-                                  fontSize: 15, fontFamily: 'Poppins'))),
-                          DataCell(Text(vendor['address'],
-                              style: const TextStyle(
-                                  fontSize: 15, fontFamily: 'Poppins'))),
-                          DataCell(
-                            Row(
-                              children: [
-                                Container(
-                                  width: 10,
-                                  height: 10,
-                                  decoration: BoxDecoration(
-                                    color: _getStatusColor(
-                                        vendor['status']),
-                                    shape: BoxShape.circle,
+          : Column(
+        children: [
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.grey.shade100, Colors.grey.shade50],
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Scrollbar(
+                  thumbVisibility: true,
+                  thickness: 8,
+                  radius: const Radius.circular(4),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withOpacity(0.1),
+                              spreadRadius: 2,
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            )
+                          ],
+                        ),
+                        child: DataTable(
+                          headingRowColor:
+                          MaterialStateProperty.resolveWith<Color>(
+                                  (states) => Colors.pink.shade50),
+                          columnSpacing: 30,
+                          horizontalMargin: 20,
+                          columns: const [
+                            DataColumn(
+                                label: Text('Sr#',
+                                    style: TextStyle(
+                                        fontSize: 15,
+                                        fontFamily: 'Poppins',
+                                        fontWeight: FontWeight.bold))),
+                            DataColumn(
+                                label: Text('Full Name',
+                                    style: TextStyle(
+                                        fontSize: 15,
+                                        fontFamily: 'Poppins',
+                                        fontWeight: FontWeight.bold))),
+                            DataColumn(
+                                label: Text('Email',
+                                    style: TextStyle(
+                                        fontSize: 15,
+                                        fontFamily: 'Poppins',
+                                        fontWeight: FontWeight.bold))),
+                            DataColumn(
+                                label: Text('Business Name',
+                                    style: TextStyle(
+                                        fontSize: 15,
+                                        fontFamily: 'Poppins',
+                                        fontWeight: FontWeight.bold))),
+                            DataColumn(
+                                label: Text('Phone Number',
+                                    style: TextStyle(
+                                        fontSize: 15,
+                                        fontFamily: 'Poppins',
+                                        fontWeight: FontWeight.bold))),
+                            DataColumn(
+                                label: Text('Address',
+                                    style: TextStyle(
+                                        fontSize: 15,
+                                        fontFamily: 'Poppins',
+                                        fontWeight: FontWeight.bold))),
+                            DataColumn(
+                                label: Text('Status',
+                                    style: TextStyle(
+                                        fontSize: 15,
+                                        fontFamily: 'Poppins',
+                                        fontWeight: FontWeight.bold))),
+                            DataColumn(
+                                label: Text('Action',
+                                    style: TextStyle(
+                                        fontSize: 15,
+                                        fontFamily: 'Poppins',
+                                        fontWeight: FontWeight.bold))),
+                          ],
+                          rows: _displayedVendors.asMap().entries.map((entry) {
+                            final index = entry.key + 1 + ((_currentPage - 1) * _vendorsPerPage);
+                            final vendor = entry.value;
+                            return DataRow(
+                              cells: [
+                                DataCell(Text(index.toString(),
+                                    style: const TextStyle(
+                                        fontSize: 15, fontFamily: 'Poppins'))),
+                                DataCell(Text(vendor['fullName'],
+                                    style: const TextStyle(
+                                        fontSize: 15, fontFamily: 'Poppins'))),
+                                DataCell(Text(vendor['email'],
+                                    style: const TextStyle(
+                                        fontSize: 15, fontFamily: 'Poppins'))),
+                                DataCell(Text(vendor['businessName'],
+                                    style: const TextStyle(
+                                        fontSize: 15, fontFamily: 'Poppins'))),
+                                DataCell(Text(vendor['phoneNumber'],
+                                    style: const TextStyle(
+                                        fontSize: 15, fontFamily: 'Poppins'))),
+                                DataCell(Text(vendor['address'],
+                                    style: const TextStyle(
+                                        fontSize: 15, fontFamily: 'Poppins'))),
+                                DataCell(
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 10,
+                                        height: 10,
+                                        decoration: BoxDecoration(
+                                          color: _getStatusColor(
+                                              vendor['status']),
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        _capitalizeFirstLetter(
+                                            vendor['status']),
+                                        style: TextStyle(
+                                            fontSize: 15,
+                                            color: _getStatusColor(
+                                                vendor['status']),
+                                            fontWeight: FontWeight.w500,
+                                            fontFamily: 'Poppins'),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  _capitalizeFirstLetter(
-                                      vendor['status']),
-                                  style: TextStyle(
-                                      fontSize: 15,
-                                      color: _getStatusColor(
-                                          vendor['status']),
-                                      fontWeight: FontWeight.w500,
-                                      fontFamily: 'Poppins'),
+                                DataCell(
+                                  DropdownButton<String>(
+                                    value: vendor['status'],
+                                    underline: const SizedBox(),
+                                    items: const [
+                                      DropdownMenuItem(
+                                        value: 'approved',
+                                        child: Text('Approved',
+                                            style: TextStyle(
+                                                fontSize: 15,
+                                                fontFamily: 'Poppins')),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: 'rejected',
+                                        child: Text('Rejected',
+                                            style: TextStyle(
+                                                fontSize: 15,
+                                                fontFamily: 'Poppins')),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: 'pending',
+                                        child: Text('Pending',
+                                            style: TextStyle(
+                                                fontSize: 15,
+                                                fontFamily: 'Poppins')),
+                                      ),
+                                    ],
+                                    onChanged: (value) {
+                                      if (value != null) {
+                                        _updateSellerStatus(
+                                            vendor['userId'], value);
+                                      }
+                                    },
+                                  ),
                                 ),
                               ],
-                            ),
-                          ),
-                          DataCell(
-                            DropdownButton<String>(
-                              value: vendor['status'],
-                              underline: const SizedBox(),
-                              items: const [
-                                DropdownMenuItem(
-                                  value: 'approved',
-                                  child: Text('Approved',
-                                      style: TextStyle(
-                                          fontSize: 15,
-                                          fontFamily: 'Poppins')),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'rejected',
-                                  child: Text('Rejected',
-                                      style: TextStyle(
-                                          fontSize: 15,
-                                          fontFamily: 'Poppins')),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'pending',
-                                  child: Text('Pending',
-                                      style: TextStyle(
-                                          fontSize: 15,
-                                          fontFamily: 'Poppins')),
-                                ),
-                              ],
-                              onChanged: (value) {
-                                if (value != null) {
-                                  _updateSellerStatus(
-                                      vendor['userId'], value);
-                                }
-                              },
-                            ),
-                          ),
-                        ],
-                      );
-                    }).toList(),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back_ios, size: 16),
+                  onPressed: _prevPage,
+                  color: _currentPage > 1 ? const Color(0xFFFF4A49) : Colors.grey,
+                ),
+                Text(
+                  'Page $_currentPage of ${(_vendorList.length / _vendorsPerPage).ceil()}',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontFamily: 'Poppins',
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onPressed: _nextPage,
+                  color: _currentPage * _vendorsPerPage < _vendorList.length
+                      ? const Color(0xFFFF4A49)
+                      : Colors.grey,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
       ),
     );
   }
