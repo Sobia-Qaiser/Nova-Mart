@@ -633,7 +633,7 @@ class _VendorOrderItemState extends State<_VendorOrderItem> {
               _buildDetailRow('Items:', '${widget.itemCount}'),
               _buildDetailRow('Order Date:', _formatTimestamp(widget.createdAt)),
               _buildDetailRow('Payment:', widget.paymentMethod == 'cod' ? 'COD' : 'Card'),
-              _buildDetailRow('Total Amount:', 'PKR ${widget.totalAmount.toStringAsFixed(0)}'),
+              _buildDetailRow('Total Amount:', '\$${widget.totalAmount.toStringAsFixed(0)}'),
             ],
           ),
         ),

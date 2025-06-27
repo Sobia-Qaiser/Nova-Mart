@@ -470,7 +470,7 @@ class _EarningScreenState extends State<EarningScreen> {
             const SizedBox(height: 8),
             if (isRevenueCard) ...[
               Text(
-                "PKR ${(netAmount ?? 0).toInt()}",
+                "\$${(netAmount ?? 0).toInt()}",
 
     style: TextStyle(
                   fontSize: 18,

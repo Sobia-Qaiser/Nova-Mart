@@ -259,7 +259,7 @@ class _VendorOrderDetailScreenState extends State<VendorOrderDetailScreen> {
             ),
             const SizedBox(width: 16),
             Text(
-              'PKR ${price.toStringAsFixed(0)}',
+              '\$${price.toStringAsFixed(0)}',
               style: const TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
@@ -348,10 +348,10 @@ class _VendorOrderDetailScreenState extends State<VendorOrderDetailScreen> {
               ], isDarkMode),
 
               _buildSection('Payment Summary', [
-                _buildDetailRow('Subtotal', 'PKR ${vendorTotal.toStringAsFixed(0)}',
+                _buildDetailRow('Subtotal', '\$${vendorTotal.toStringAsFixed(0)}',
                     isDarkMode: isDarkMode),
                 const Divider(),
-                _buildDetailRow('Total Amount', 'PKR ${vendorTotal.toStringAsFixed(0)}',
+                _buildDetailRow('Total Amount', '\$${vendorTotal.toStringAsFixed(0)}',
                     isTotal: true, isDarkMode: isDarkMode),
               ], isDarkMode),
             ] else

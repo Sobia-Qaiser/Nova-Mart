@@ -112,7 +112,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'PKR ${effectivePrice.toStringAsFixed(0)}',
+                          '\$${effectivePrice.toStringAsFixed(0)}',
                           style: const TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.bold,
@@ -596,7 +596,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ),
           ),
           Text(
-            'PKR ${amount.toStringAsFixed(0)}',
+            '\$${amount.toStringAsFixed(0)}',
             style: TextStyle(
               fontSize: isTotal ? 18 : 16,
               fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,

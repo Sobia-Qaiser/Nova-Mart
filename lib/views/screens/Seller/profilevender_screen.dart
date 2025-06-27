@@ -13,6 +13,7 @@ import 'package:multi_vendor_ecommerce_app/views/screens/Seller/main_vendor_scre
 import 'package:multi_vendor_ecommerce_app/views/screens/Seller/storedetails.dart';
 
 import '../../../controllers/theme_controller.dart';
+import 'package:http/http.dart' as http;
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -216,6 +217,83 @@ class _ProfileScreenState extends State<ProfileScreen> {
               );
             },
           ),
+          _buildSettingItem(
+            context,
+            icon: Icons.shopping_cart,
+            title: 'Product Recommendations',
+            onTap: () async {
+              // Show circular progress dialog
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => AlertDialog(
+                  content: Row(
+                    children: const [
+                      CircularProgressIndicator(),
+                      SizedBox(width: 20),
+                      Text("Generating recommendations..."),
+                    ],
+                  ),
+                ),
+              );
+
+              try {
+                // Replace with your Flask local IP and port
+                final response = await http.get(Uri.parse('http://192.168.1.24:5000/generate-recommendations'));
+
+                Navigator.of(context).pop(); // Close the loading dialog
+
+                if (response.statusCode == 200) {
+                  // Navigate to StoreDetails after successful response
+                  Navigator.push(
+                    context,
+                    PageRouteBuilder(
+                      pageBuilder: (context, animation, secondaryAnimation) => StoreDetails(),
+                      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                        return FadeTransition(
+                          opacity: animation,
+                          child: child,
+                        );
+                      },
+                    ),
+                  );
+                } else {
+                  // Show error dialog
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text("Error"),
+                      content: Text("Failed to generate recommendations.\nStatus: ${response.statusCode}"),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text("OK"),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+              } catch (e) {
+                Navigator.of(context).pop(); // Close loading dialog if error
+
+                // Show error dialog
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text("Connection Error"),
+                    content: Text("Could not connect to server.\nError: $e"),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text("OK"),
+                      ),
+                    ],
+                  ),
+                );
+              }
+            },
+          ),
+
           _buildDivider(context),
           _buildSettingItem(
             context,

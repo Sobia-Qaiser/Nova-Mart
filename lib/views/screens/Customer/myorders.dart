@@ -291,7 +291,7 @@ class _OrderItem extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             _buildDetailRow('Order Date:', _formatTimestamp(createdAt)),
-            _buildDetailRow('Total Amount:', 'PKR ${totalAmount.toStringAsFixed(0)}'),
+            _buildDetailRow('Total Amount:', '\$${totalAmount.toStringAsFixed(0)}'),
             if (status.toLowerCase() != 'delivered')
               _buildDetailRow('Estimated Delivery:', deliveryTime),
           ],

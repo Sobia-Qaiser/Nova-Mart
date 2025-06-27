@@ -334,7 +334,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             ),
             const SizedBox(height: 8),
             Text(
-              "PKR ${totalRevenue.toInt()}",
+              "\$${totalRevenue.toInt()}",
               style: TextStyle(
                 fontSize: 18,
                 color: isDarkMode ? Colors.white : Colors.black,

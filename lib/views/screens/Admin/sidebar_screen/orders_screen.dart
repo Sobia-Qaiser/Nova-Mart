@@ -357,7 +357,7 @@ class _OrderManagementPageState extends State<OrderManagementPage> {
                                         fontWeight: FontWeight.bold,
                                       )),
                                 ),
-                                DataCell(Text('PKR ${order['totalAmount']}',
+                                DataCell(Text('\$${order['totalAmount']}',
                                     style: const TextStyle(
                                         fontSize: 15, fontFamily: 'Poppins'))),
                                 DataCell(

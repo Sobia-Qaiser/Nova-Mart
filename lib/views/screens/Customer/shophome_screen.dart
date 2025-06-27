@@ -720,7 +720,7 @@ class _ShopHomeState extends State<ShopHome> {
                                   children: [
                                     if (hasDiscount) ...[
                                       Text(
-                                        'PKR ${product['discountPrice']}',
+                                        '\$${product['discountPrice']}',
                                         style: const TextStyle(
                                           fontSize: 14,
                                           fontWeight: FontWeight.bold,
@@ -730,7 +730,7 @@ class _ShopHomeState extends State<ShopHome> {
                                       ),
                                       const SizedBox(width: 8),
                                       Text(
-                                        'PKR ${product['price']}',
+                                        '\$${product['price']}',
                                         style: TextStyle(
                                           fontSize: 12,
                                           color: Colors.grey.shade600,
@@ -740,7 +740,7 @@ class _ShopHomeState extends State<ShopHome> {
                                       ),
                                     ] else ...[
                                       Text(
-                                        'PKR ${product['price']}',
+                                        '\$${product['price']}',
                                         style: const TextStyle(
                                           fontSize: 14,
                                           fontWeight: FontWeight.bold,
@@ -948,7 +948,7 @@ class _ShopHomeState extends State<ShopHome> {
     children: [
     if (hasDiscount) ...[
     Text(
-    'PKR ${product['discountPrice']}',
+    '\$${product['discountPrice']}',
     style: const TextStyle(
     fontSize: 14,
     fontWeight: FontWeight.bold,
@@ -958,7 +958,7 @@ class _ShopHomeState extends State<ShopHome> {
     ),
     const SizedBox(width: 8),
     Text(
-    'PKR ${product['price']}',
+    '\$${product['price']}',
     style: TextStyle(
     fontSize: 12,
     color: Colors.grey.shade600,
@@ -968,7 +968,7 @@ class _ShopHomeState extends State<ShopHome> {
     ),
     ] else ...[
     Text(
-    'PKR ${product['price']}',
+    '\$${product['price']}',
     style: const TextStyle(
     fontSize: 14,
     fontWeight: FontWeight.bold,

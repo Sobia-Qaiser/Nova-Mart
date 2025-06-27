@@ -270,7 +270,7 @@ class ProductDetailScreen extends StatelessWidget {
                   ),
                 ),
                 TextSpan(
-                  text: 'PKR ${product['discountPrice']?.toStringAsFixed(2)}  ',
+                  text: '\$${product['discountPrice']?.toStringAsFixed(2)}  ',
                   style: const TextStyle(
                     fontSize: 16,
                     color: Color(0xFFFF4A49),
@@ -278,7 +278,7 @@ class ProductDetailScreen extends StatelessWidget {
                   ),
                 ),
                 TextSpan(
-                  text: 'PKR ${product['price']?.toStringAsFixed(2)}',
+                  text: '\$${product['price']?.toStringAsFixed(2)}',
                   style: TextStyle(
                     fontSize: 14,
                     color: isDarkMode ? Colors.grey[400] : Colors.grey,
@@ -301,7 +301,7 @@ class ProductDetailScreen extends StatelessWidget {
                   ),
                 ),
                 TextSpan(
-                  text: 'PKR ${product['price']?.toStringAsFixed(2)}',
+                  text: '\$${product['price']?.toStringAsFixed(2)}',
                   style: const TextStyle(
                     fontSize: 16,
                     color: Color(0xFFFF4A49),
@@ -582,7 +582,7 @@ class ProductDetailScreen extends StatelessWidget {
           children: [
             _buildInfoCard(
               title: 'Shipping',
-              value: 'PKR ${product['shippingCharges']?.toStringAsFixed(2) ?? '0.00'}',
+              value: '\$${product['shippingCharges']?.toStringAsFixed(2) ?? '0.00'}',
               icon: Icons.local_shipping,
               isDarkMode: isDarkMode,
               iconColor: Color(0xFFFF4A49),

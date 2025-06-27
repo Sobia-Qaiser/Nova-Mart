@@ -411,7 +411,7 @@ class _SearchScreenState extends State<SearchScreen> {
                                 children: [
                                   if (hasDiscount) ...[
                                     Text(
-                                      'PKR ${product['discountPrice']}',
+                                      '\$${product['discountPrice']}',
                                       style: const TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.bold,
@@ -420,7 +420,7 @@ class _SearchScreenState extends State<SearchScreen> {
                                     ),
                                     const SizedBox(width: 8),
                                     Text(
-                                      'PKR ${product['price']}',
+                                      '\$${product['price']}',
                                       style: const TextStyle(
                                         fontSize: 12,
                                         color: Colors.grey,
@@ -429,7 +429,7 @@ class _SearchScreenState extends State<SearchScreen> {
                                     ),
                                   ] else ...[
                                     Text(
-                                      'PKR ${product['price']}',
+                                      '\$${product['price']}',
                                       style: const TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.bold,

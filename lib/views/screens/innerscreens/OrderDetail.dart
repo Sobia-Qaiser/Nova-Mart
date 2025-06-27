@@ -219,7 +219,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             ),
             const SizedBox(width: 16),
             Text(
-              'PKR ${price.toStringAsFixed(0)}',
+              '\$${price.toStringAsFixed(0)}',
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
@@ -370,14 +370,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                     ], isDarkMode),
 
                     _buildSection('Total Breakdown', [
-                      _buildDetailRow('Subtotal', 'PKR ${(total - shipping - tax).toStringAsFixed(0)}',
+                      _buildDetailRow('Subtotal', '\$${(total - shipping - tax).toStringAsFixed(0)}',
                           isDarkMode: isDarkMode),
-                      _buildDetailRow('Shipping', 'PKR ${shipping.toStringAsFixed(0)}',
+                      _buildDetailRow('Shipping', '\$${shipping.toStringAsFixed(0)}',
                           isDarkMode: isDarkMode),
-                      _buildDetailRow('Tax', 'PKR ${tax.toStringAsFixed(0)}',
+                      _buildDetailRow('Tax', '\$${tax.toStringAsFixed(0)}',
                           isDarkMode: isDarkMode),
                       const Divider(),
-                      _buildDetailRow('Total Amount', 'PKR ${total.toStringAsFixed(0)}',
+                      _buildDetailRow('Total Amount', '\$${total.toStringAsFixed(0)}',
                           isTotal: true, isDarkMode: isDarkMode),
                     ], isDarkMode),
                   ],

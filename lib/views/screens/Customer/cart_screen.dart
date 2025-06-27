@@ -303,7 +303,7 @@ class _CartScreenState extends State<CartScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'PKR ${effectivePrice.toStringAsFixed(0)}',
+                        '\$${effectivePrice.toStringAsFixed(0)}',
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
@@ -323,7 +323,7 @@ class _CartScreenState extends State<CartScreen> {
                     Padding(
                       padding: const EdgeInsets.only(top: 1),
                       child: Text(
-                        'PKR ${originalPrice.toStringAsFixed(0)}',
+                        '\$${originalPrice.toStringAsFixed(0)}',
                         style: TextStyle(
                           fontSize: 13,
                           color: Colors.grey[600],
@@ -497,7 +497,7 @@ class _CartScreenState extends State<CartScreen> {
             ),
           ),
           Text(
-            'PKR ${value.toStringAsFixed(0)}',
+            '\$${value.toStringAsFixed(0)}',
             style: TextStyle(
               fontSize: 14,
               color: isTotal

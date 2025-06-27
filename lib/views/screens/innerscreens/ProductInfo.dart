@@ -690,7 +690,7 @@ class _ProductInfoState extends State<ProductInfo> {
                 children: [
                   if (discountPrice.isNotEmpty)
                     Text(
-                      'PKR $discountPrice',
+                      '\$$discountPrice',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -700,7 +700,7 @@ class _ProductInfoState extends State<ProductInfo> {
                     ),
                   if (discountPrice.isNotEmpty) const SizedBox(width: 6),
                   Text(
-                    'PKR $price',
+                    '\$$price',
                     style: TextStyle(
                       fontSize: discountPrice.isNotEmpty ? 12 : 16,
                       color: discountPrice.isNotEmpty

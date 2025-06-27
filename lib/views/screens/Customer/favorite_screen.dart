@@ -224,7 +224,7 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
                         children: [
                           // Change this Text widget
                           Text(
-                            'PKR ${(hasDiscount ? discountPrice : originalPrice).toStringAsFixed(0)}',
+                            '\$${(hasDiscount ? discountPrice : originalPrice).toStringAsFixed(0)}',
                             style: TextStyle(
                                 color: Color(0xFFFF4A49),
                                 fontWeight: FontWeight.bold
@@ -234,7 +234,7 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
                           if (hasDiscount) ...[
                             SizedBox(width: 4),
                             Text(
-                              'PKR ${originalPrice.toStringAsFixed(0)}',
+                              '\$${originalPrice.toStringAsFixed(0)}',
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.grey.shade600,
@@ -250,7 +250,7 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
                       if (hasDiscount) ...[
                         SizedBox(height: 1),
                         Text(
-                          'Save PKR ${(originalPrice - discountPrice).toStringAsFixed(0)}',
+                          'Save \$${(originalPrice - discountPrice).toStringAsFixed(0)}',
                           style: TextStyle(
                               color: Colors.green[700],
                               fontSize: 12

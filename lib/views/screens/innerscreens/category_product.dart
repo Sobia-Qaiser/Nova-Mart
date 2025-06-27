@@ -342,7 +342,7 @@ class _CategoryProductScreenState extends State<CategoryProductScreen> {
                             if (product['discountPrice'] != null &&
                                 product['discountPrice'] != product['price']) ...[
                               Text(
-                                'PKR ${product['discountPrice']}',
+                                '\$${product['discountPrice']}',
                                 style: const TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
@@ -352,7 +352,7 @@ class _CategoryProductScreenState extends State<CategoryProductScreen> {
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                'PKR ${product['price']}',
+                                '\$${product['price']}',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: Colors.grey.shade600,
@@ -362,7 +362,7 @@ class _CategoryProductScreenState extends State<CategoryProductScreen> {
                               ),
                             ] else
                               Text(
-                                'PKR ${product['price']}',
+                                '\$${product['price']}',
                                 style: const TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,

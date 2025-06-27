@@ -432,11 +432,11 @@ class _ProductManagementPageState extends State<ProductManagementPage> {
     style: const TextStyle(
     fontSize: 15, fontFamily: 'Poppins'))),
     DataCell(Text(
-    product['price'] == "---" ? "---" : 'PKR ${product['price']}',
+    product['price'] == "---" ? "---" : '\$${product['price']}',
     style: const TextStyle(
     fontSize: 15, fontFamily: 'Poppins'))),
     DataCell(Text(
-    product['discountPrice'] == "---" ? "---" : 'PKR ${product['discountPrice']}',
+    product['discountPrice'] == "---" ? "---" : '\$${product['discountPrice']}',
     style: const TextStyle(
     fontSize: 15, fontFamily: 'Poppins'))),
     DataCell(Text(product['stock'],

@@ -227,13 +227,13 @@ class _RevenueScreenState extends State<RevenueScreen> {
     fontFamily: 'Poppins'))),
     DataCell(
     Text(
-    'PKR ${NumberFormat('#,##0').format(vendor['totalRevenue'])}',
+    '\$${NumberFormat('#,##0').format(vendor['totalRevenue'])}',
     style: const TextStyle(
     fontSize: 15,
     fontFamily: 'Poppins'))),
     DataCell(
     Text(
-    'PKR ${NumberFormat('#,##0').format(vendor['thisMonth'])}',
+    '\$${NumberFormat('#,##0').format(vendor['thisMonth'])}',
     style: const TextStyle(
     fontSize: 15,
     fontFamily: 'Poppins'))),
