@@ -83,10 +83,10 @@ class UploadScreen extends StatelessWidget {
                       fontFamily: 'Poppins',
                       fontSize: 14,
                       shadows: [
-                      Shadow(
-                      color: Colors.black12,
-                      blurRadius: 2,
-                      offset: Offset(1, 1)),
+                        Shadow(
+                            color: Colors.black12,
+                            blurRadius: 2,
+                            offset: Offset(1, 1)),
                       ],
                     ),
                     unselectedLabelStyle: TextStyle(
@@ -248,8 +248,10 @@ class _GeneralScreenState extends State<GeneralScreen> {
           .ref('products/$productId')
           .set(productData);
 
+
+      _clearAllFormData();
       // Clear form and refresh products
-      _provider.clearForm();
+      // _provider.clearForm();
       await _provider.loadVendorProducts();
 
       if (mounted) {
@@ -282,6 +284,38 @@ class _GeneralScreenState extends State<GeneralScreen> {
       }
     } finally {
       setState(() => _isLoading = false);
+    }
+  }
+
+
+  void _clearAllFormData() {
+    // Clear provider data
+    _provider.clearForm();
+
+    // Clear controllers
+    _descriptionController.clear();
+    _sizeController.clear();
+    _colorController.clear();
+    _varSizeController.clear();
+    _varColorController.clear();
+    _varQtyController.clear();
+
+    // Reset dropdown selections
+    setState(() {
+      _selectedCategory = null;
+      _selectedProductType = null;
+      // _provider.productType = null; // Also clear the product type in provider
+    });
+
+    // Reset form states
+    if (_formKey.currentState != null) {
+      _formKey.currentState!.reset();
+    }
+    if (_variationFormKey.currentState != null) {
+      _variationFormKey.currentState!.reset();
+    }
+    if (_productTypeFormKey.currentState != null) {
+      _productTypeFormKey.currentState!.reset();
     }
   }
 
@@ -538,7 +572,7 @@ class _GeneralScreenState extends State<GeneralScreen> {
                         style: TextStyle(color: Colors.red, fontSize: 12),
                       ),
                       TextSpan(
-                        text: 'Enter price in PKR only',
+                        text: 'Enter price in dollar only',
                         style: TextStyle(
                           fontSize: 12,
                           color: Theme.of(context).brightness == Brightness.dark
@@ -1101,49 +1135,49 @@ class _UploadedProductsScreenState extends State<UploadedProductsScreen> {
       backgroundColor: isDarkMode ? Colors.grey[900] : const Color(0xFFF8F9FA),
       body: Column(
         children: [
-      Visibility(
-      visible: provider.uploadedProducts.isNotEmpty,
-          // Category Filter Chips
-          child:Container(
-            height: 50,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: categories.length,
-              itemBuilder: (context, index) {
-                final category = categories[index];
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _selectedCategory = category;
-                      });
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: _selectedCategory == category
-                            ? const Color(0xFFFF4A49)
-                            : isDarkMode ? Colors.grey[800] : Colors.grey[200],
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        category,
-                        style: TextStyle(
-                          color: _selectedCategory == category
-                              ? Colors.white
-                              : isDarkMode ? Colors.white : Colors.black,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
+          Visibility(
+              visible: provider.uploadedProducts.isNotEmpty,
+              // Category Filter Chips
+              child:Container(
+                height: 50,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: categories.length,
+                  itemBuilder: (context, index) {
+                    final category = categories[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _selectedCategory = category;
+                          });
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: _selectedCategory == category
+                                ? const Color(0xFFFF4A49)
+                                : isDarkMode ? Colors.grey[800] : Colors.grey[200],
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            category,
+                            style: TextStyle(
+                              color: _selectedCategory == category
+                                  ? Colors.white
+                                  : isDarkMode ? Colors.white : Colors.black,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          )),
+                    );
+                  },
+                ),
+              )),
           // Product List
           Expanded(
             child: provider.isLoadingProducts
@@ -1183,12 +1217,12 @@ class _UploadedProductsScreenState extends State<UploadedProductsScreen> {
         : null;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 2,
-      color: isDarkMode ? Colors.grey[800] : Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+        margin: const EdgeInsets.only(bottom: 16),
+        elevation: 2,
+        color: isDarkMode ? Colors.grey[800] : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
         child: GestureDetector(
           onTap: () {
             Navigator.push(
@@ -1206,171 +1240,171 @@ class _UploadedProductsScreenState extends State<UploadedProductsScreen> {
             );
           },
           child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+            padding: const EdgeInsets.all(12),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Product Image
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    color: isDarkMode ? Colors.grey[700] : Colors.grey[200],
-                  ),
-                  child: imageUrl != null
-                      ? ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      imageUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
-                          Icon(Icons.broken_image, color: Colors.grey),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Product Image
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        color: isDarkMode ? Colors.grey[700] : Colors.grey[200],
+                      ),
+                      child: imageUrl != null
+                          ? ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          imageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              Icon(Icons.broken_image, color: Colors.grey),
+                        ),
+                      )
+                          : Icon(Icons.image, color: Colors.grey),
                     ),
-                  )
-                      : Icon(Icons.image, color: Colors.grey),
-                ),
-                const SizedBox(width: 12),
+                    const SizedBox(width: 12),
 
-                // Product Details
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        product['productName'] ?? 'No Name',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: isDarkMode ? Colors.white : Colors.black87,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Category: ${product['category'] ?? 'No Category'}',
-                        style: TextStyle(
-                          color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-                          fontSize: 12,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
+                    // Product Details
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (product['discountPrice'] != null && product['discountPrice'] > 0)
-                            Text(
-                              'PKR ${product['discountPrice']?.toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFFFF4A49),
-                              ),
+                          Text(
+                            product['productName'] ?? 'No Name',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: isDarkMode ? Colors.white : Colors.black87,
                             ),
-                          if (product['discountPrice'] != null && product['discountPrice'] > 0)
-                            Padding(
-                              padding: const EdgeInsets.only(left: 8),
-                              child: Text(
-                                'PKR ${product['price']?.toStringAsFixed(2) ?? '0.00'}',
-                                style: TextStyle(
-                                  decoration: TextDecoration.lineThrough,
-                                  color: isDarkMode ? Colors.grey[500] : Colors.grey,
-                                  fontSize: 12,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Category: ${product['category'] ?? 'No Category'}',
+                            style: TextStyle(
+                              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              if (product['discountPrice'] != null && product['discountPrice'] > 0)
+                                Text(
+                                  '\$${product['discountPrice']?.toStringAsFixed(2)}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFFFF4A49),
+                                  ),
                                 ),
-                              ),
-                            )
-                          else
-                            Text(
-                              'PKR ${product['price']?.toStringAsFixed(2) ?? '0.00'}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFFFF4A49),
-                              ),
-                            ),
+                              if (product['discountPrice'] != null && product['discountPrice'] > 0)
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 8),
+                                  child: Text(
+                                    '\$${product['price']?.toStringAsFixed(2) ?? '0.00'}',
+                                    style: TextStyle(
+                                      decoration: TextDecoration.lineThrough,
+                                      color: isDarkMode ? Colors.grey[500] : Colors.grey,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                )
+                              else
+                                Text(
+                                  '\$${product['price']?.toStringAsFixed(2) ?? '0.00'}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFFFF4A49),
+                                  ),
+                                ),
+                            ],
+                          ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-
-                // Three Dot Menu
-                PopupMenuButton<String>(
-                  icon: Icon(Icons.more_vert, color: isDarkMode ? Colors.grey[400] : Colors.black87),
-                  onSelected: (value) => _handleMenuSelection(value, product['productId'], context, provider),
-                  itemBuilder: (BuildContext context) {
-                    return {'View', 'Edit', 'Delete'}.map((String choice) {
-                      return PopupMenuItem<String>(
-                        value: choice,
-                        child: Text(choice),
-                      );
-                    }).toList();
-                  },
-                ),
-              ],
-            ),
-
-            // Stock Information
-            const SizedBox(height: 12),
-            Divider(height: 1, color: isDarkMode ? Colors.grey[700] : Colors.grey[300]),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Stock',
-                      style: TextStyle(
-                        color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-                        fontSize: 12,
-                      ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _getStockText(product),
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: isDarkMode ? Colors.white : Colors.black87,
-                      ),
+
+                    // Three Dot Menu
+                    PopupMenuButton<String>(
+                      icon: Icon(Icons.more_vert, color: isDarkMode ? Colors.grey[400] : Colors.black87),
+                      onSelected: (value) => _handleMenuSelection(value, product['productId'], context, provider),
+                      itemBuilder: (BuildContext context) {
+                        return {'View', 'Edit', 'Delete'}.map((String choice) {
+                          return PopupMenuItem<String>(
+                            value: choice,
+                            child: Text(choice),
+                          );
+                        }).toList();
+                      },
                     ),
                   ],
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+
+                // Stock Information
+                const SizedBox(height: 12),
+                Divider(height: 1, color: isDarkMode ? Colors.grey[700] : Colors.grey[300]),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Status',
-                      style: TextStyle(
-                        color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: _getStockStatusColor(product),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        _getStockStatus(product),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Stock',
+                          style: TextStyle(
+                            color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                            fontSize: 12,
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _getStockText(product),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: isDarkMode ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Status',
+                          style: TextStyle(
+                            color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: _getStockStatusColor(product),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            _getStockStatus(product),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ],
             ),
-          ],
-        ),
-      ),
-    ));
+          ),
+        ));
   }
 
   String _getStockText(Map<String, dynamic> product) {
@@ -1383,20 +1417,20 @@ class _UploadedProductsScreenState extends State<UploadedProductsScreen> {
           final qty = variation['quantity'] is int
               ? variation['quantity'] as int
               : (int.tryParse(variation['quantity']?.toString() ?? '0'))?? 0;
-              totalStock += qty;
-              }
+          totalStock += qty;
+        }
 
-              return '$totalStock';
-              }
+        return '$totalStock';
+      }
 
-              final simpleQty = product['quantity'] is int
-              ? product['quantity'] as int
-                  : (int.tryParse(product['quantity']?.toString() ?? '0')) ?? 0;
+      final simpleQty = product['quantity'] is int
+          ? product['quantity'] as int
+          : (int.tryParse(product['quantity']?.toString() ?? '0')) ?? 0;
 
-    return '$simpleQty';
+      return '$simpleQty';
     } catch (e) {
-    debugPrint('Error in _getStockText: $e');
-    return '0';
+      debugPrint('Error in _getStockText: $e');
+      return '0';
     }
   }
 
@@ -1459,7 +1493,8 @@ class _UploadedProductsScreenState extends State<UploadedProductsScreen> {
       String productId,
       BuildContext context,
       ProductProvider provider,
-      ) {
+      )
+  {
     switch (value) {
       case 'View':
         final product = provider.uploadedProducts.firstWhere(
@@ -1515,7 +1550,8 @@ class _UploadedProductsScreenState extends State<UploadedProductsScreen> {
   }
 
   void _showDeleteDialog(
-      BuildContext context, String productId, ProductProvider provider) {
+      BuildContext context, String productId, ProductProvider provider)
+  {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -1580,4 +1616,3 @@ class _UploadedProductsScreenState extends State<UploadedProductsScreen> {
     );
   }
 }
-

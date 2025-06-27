@@ -19,6 +19,47 @@ class MyOrders extends StatelessWidget {
     return 0.0;
   }
 
+  Future<void> _updateOrderStatus(String orderId, Map<dynamic, dynamic>? itemsData) async {
+    if (itemsData == null) return;
+
+    final ordersRef = FirebaseDatabase.instance.ref('orders').child(orderId);
+    final now = DateTime.now();
+    final formattedDate = DateFormat('MMMM d, y').format(now);
+    final formattedTime = DateFormat('h:mm a').format(now);
+    final deliveredAt = 'Delivered on $formattedDate at $formattedTime';
+
+    bool allProcessing = true;
+    bool allDelivered = true;
+    bool hasItems = false;
+
+    itemsData.forEach((key, value) {
+      hasItems = true;
+      final status = value['vendorStatus']?.toString().toLowerCase() ?? 'pending';
+
+      if (status != 'processing') {
+        allProcessing = false;
+      }
+      if (status != 'delivered') {
+        allDelivered = false;
+      }
+    });
+
+    Map<String, dynamic> updates = {};
+
+    if (allDelivered) {
+      updates['status'] = 'Delivered';
+      updates['deliveredAt'] = deliveredAt;
+    } else if (allProcessing) {
+      updates['status'] = 'Processing';
+    } else {
+      updates['status'] = 'Pending';
+    }
+
+    if (updates.isNotEmpty) {
+      await ordersRef.update(updates);
+    }
+  }
+
   String _determineOrderStatus(Map<dynamic, dynamic>? itemsData) {
     if (itemsData == null) return 'Pending';
 
@@ -30,7 +71,7 @@ class MyOrders extends StatelessWidget {
       hasItems = true;
       final status = value['vendorStatus']?.toString().toLowerCase() ?? 'pending';
 
-      if (status != 'processing' && status != 'delivered') {
+      if (status != 'processing') {
         allProcessing = false;
       }
       if (status != 'delivered') {
@@ -108,7 +149,13 @@ class MyOrders extends StatelessWidget {
 
               // Get the order items to determine status
               final orderItems = order['items'] as Map<dynamic, dynamic>?;
-              final status = _determineOrderStatus(orderItems);
+
+              // Update the order status in database if needed
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _updateOrderStatus(orderId, orderItems);
+              });
+
+              final status = order['status']?.toString() ?? _determineOrderStatus(orderItems);
 
               return GestureDetector(
                   onTap: () {
@@ -129,8 +176,9 @@ class MyOrders extends StatelessWidget {
                   child: _OrderItem(
                     orderId: orderId,
                     orderNumber: order['orderNumber']?.toString() ?? 'N/A',
-                    status: capitalize(status), // Use the determined status
+                    status: capitalize(status),
                     createdAt: order['createdAt'],
+                    deliveredAt: order['deliveredAt'],
                     totalAmount: _parseDouble(order['totalAmount']),
                     deliveryTime: order['deliveryTime']?.toString() ?? '5-6 business days',
                     isDarkMode: isDarkMode,
@@ -149,6 +197,7 @@ class _OrderItem extends StatelessWidget {
   final String orderNumber;
   final String status;
   final dynamic createdAt;
+  final dynamic deliveredAt;
   final double totalAmount;
   final String deliveryTime;
   final bool isDarkMode;
@@ -158,6 +207,7 @@ class _OrderItem extends StatelessWidget {
     required this.orderNumber,
     required this.status,
     required this.createdAt,
+    this.deliveredAt,
     required this.totalAmount,
     required this.deliveryTime,
     required this.isDarkMode,
@@ -194,6 +244,7 @@ class _OrderItem extends StatelessWidget {
     }
   }
 
+  @override
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -241,7 +292,7 @@ class _OrderItem extends StatelessWidget {
             const SizedBox(height: 8),
             _buildDetailRow('Order Date:', _formatTimestamp(createdAt)),
             _buildDetailRow('Total Amount:', 'PKR ${totalAmount.toStringAsFixed(0)}'),
-            if (status.toLowerCase() != 'delivered') // Only show delivery estimate if status is not delivered
+            if (status.toLowerCase() != 'delivered')
               _buildDetailRow('Estimated Delivery:', deliveryTime),
           ],
         ),
