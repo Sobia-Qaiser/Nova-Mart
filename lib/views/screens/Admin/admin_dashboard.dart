@@ -366,6 +366,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
       );
     }
 
+    // ✅ Custom maxY based on period
+    double maxYValue;
+    if (selectedPeriod == "Monthly") {
+      maxYValue = 20;
+    } else {
+      maxYValue = spots.map((s) => s.y).reduce((a, b) => a > b ? a : b);
+      maxYValue = (maxYValue * 1.2).ceilToDouble();
+      if (maxYValue < 14) maxYValue = 14;
+    }
+
     return Container(
       height: 300,
       padding: const EdgeInsets.all(16),
@@ -420,7 +430,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     sideTitles: SideTitles(
                       showTitles: true,
                       getTitlesWidget: (value, meta) {
-                        if (value % 50 == 0) {
+                        if (value % 5 == 0) {
                           return Text(
                             value.toInt().toString(),
                             style: TextStyle(
@@ -432,15 +442,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         return const Text('');
                       },
                       reservedSize: 32,
-                      interval: 50,
+                      interval: 5,
                     ),
                   ),
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
+                  rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
                 ),
                 borderData: FlBorderData(
                   show: true,
@@ -454,7 +460,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 minX: 0,
                 maxX: (spots.length - 1).toDouble(),
                 minY: 0,
-                maxY: 300,
+                maxY: maxYValue, // ✅ set dynamic maxY
                 lineBarsData: [
                   LineChartBarData(
                     spots: spots,
@@ -486,6 +492,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {

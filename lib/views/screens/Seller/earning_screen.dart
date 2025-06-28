@@ -7,6 +7,8 @@ import 'package:fl_chart/fl_chart.dart';
 
 import 'Vendorschatlistscreen.dart';
 
+
+
 class EarningScreen extends StatefulWidget {
   const EarningScreen({super.key});
 
@@ -33,6 +35,10 @@ class _EarningScreenState extends State<EarningScreen> {
   double thisMonthEarning = 0.0;
   double thisMonthEarningAfterCommission = 0.0;
   DateTime? vendorJoinDate;
+  double currentWeekRevenue = 0.0;
+  double currentWeekRevenueAfterCommission = 0.0;
+  String currentWeekStartDate = "";
+  String currentMonth = "";
 
   // Data for the chart
   List<FlSpot> weeklySpots = [];
@@ -61,11 +67,11 @@ class _EarningScreenState extends State<EarningScreen> {
       final name = await _authController.getCurrentVendorName();
 
       await _fetchVendorJoinDate();
+      await _checkRevenueReset(); // Add this line
       await Future.wait([
         _fetchTotalOrders(),
         _fetchTotalProducts(),
-        _fetchTotalRevenue(),
-        _fetchThisMonthEarning(),
+        _fetchTotalRevenue(), // This will now update weekly/monthly data
         _fetchChartData(),
       ]);
 
@@ -141,8 +147,6 @@ class _EarningScreenState extends State<EarningScreen> {
     }
   }
 
-
-
   Future<void> _fetchTotalOrders() async {
     final snapshot = await _dbRef.child('orders').once();
     if (snapshot.snapshot.value == null) return;
@@ -197,39 +201,81 @@ class _EarningScreenState extends State<EarningScreen> {
     final ordersMap = snapshot.snapshot.value as Map<dynamic, dynamic>;
     double revenue = 0.0;
     double revenueAfterCommission = 0.0;
+    double weekRevenue = 0.0;
+    double weekRevenueAfterCommission = 0.0;
+    double monthRevenue = 0.0;
+    double monthRevenueAfterCommission = 0.0;
+
+    // Get current week start (Monday) and current month
+    final now = DateTime.now();
+    final currentWeekStart = _getMonday(now);
+    final currentMonthStr = DateFormat('yyyyMM').format(now);
+    currentWeekStartDate = DateFormat('yyyyMMdd').format(currentWeekStart);
+    currentMonth = currentMonthStr;
 
     ordersMap.forEach((orderId, orderData) {
       if (orderData['items'] != null && _isOrderValid(orderData)) {
         final items = orderData['items'] as Map<dynamic, dynamic>;
         double vendorOrderTotal = 0.0;
+        bool hasVendorItems = false;
 
         items.forEach((itemId, itemData) {
           if (itemData['vendorId'] == vendorId && itemData['vendorStatus'] == 'delivered') {
-            vendorOrderTotal += (itemData['price'] ?? 0.0) * (itemData['quantity'] ?? 1);
+            final price = (itemData['price'] ?? 0.0) as num;
+            final quantity = (itemData['quantity'] ?? 1) as num;
+            vendorOrderTotal += price * quantity;
+            hasVendorItems = true;
           }
         });
 
+        if (!hasVendorItems) return;
+
         revenue += vendorOrderTotal;
         revenueAfterCommission += vendorOrderTotal * 0.95;
+
+        // Parse delivery date
+        final deliveryDate = _parseDeliveryDate(orderData['deliveredAt']);
+        if (deliveryDate == null) return;
+
+        // Week revenue check (including Monday)
+        if (!deliveryDate.isBefore(currentWeekStart)) {
+          weekRevenue += vendorOrderTotal;
+          weekRevenueAfterCommission += vendorOrderTotal * 0.95;
+        }
+
+
+        // Month revenue check
+        final deliveryMonthStr = DateFormat('yyyyMM').format(deliveryDate);
+        if (deliveryMonthStr == currentMonthStr) {
+          monthRevenue += vendorOrderTotal;
+          monthRevenueAfterCommission += vendorOrderTotal * 0.95;
+        }
       }
     });
 
-    // Get vendor details from users node
+    // Fetch vendor data
     final vendorSnapshot = await _dbRef.child('users').child(vendorId).once();
     if (vendorSnapshot.snapshot.value != null) {
       final vendorData = vendorSnapshot.snapshot.value as Map<dynamic, dynamic>;
       final vendorName = vendorData['fullName'] ?? 'Unknown Vendor';
       final businessName = vendorData['businessName'] ?? 'Unknown Business';
 
-      // Update revenue node
       await _dbRef.child('revenue').child(vendorId).set({
         'vendorName': vendorName,
         'businessName': businessName,
         'vendorId': vendorId,
         'totalRevenue': revenue,
         'totalRevenueAfterCommission': revenueAfterCommission,
-        'thisMonthEarning': thisMonthEarning,
-        'thisMonthEarningAfterCommission': thisMonthEarningAfterCommission,
+        'currentWeek': {
+          'startDate': currentWeekStartDate,
+          'revenue': weekRevenue,
+          'revenueAfterCommission': weekRevenueAfterCommission,
+        },
+        'currentMonth': {
+          'month': currentMonthStr,
+          'revenue': monthRevenue,
+          'revenueAfterCommission': monthRevenueAfterCommission,
+        },
         'lastUpdated': DateTime.now().millisecondsSinceEpoch,
       });
     }
@@ -238,7 +284,32 @@ class _EarningScreenState extends State<EarningScreen> {
       setState(() {
         totalRevenue = revenue;
         totalRevenueAfterCommission = revenueAfterCommission;
+        currentWeekRevenue = weekRevenue;
+        currentWeekRevenueAfterCommission = weekRevenueAfterCommission;
+        thisMonthEarning = monthRevenue;
+        thisMonthEarningAfterCommission = monthRevenueAfterCommission;
       });
+    }
+  }
+
+// Helper function to get Monday of current week
+  DateTime _getMonday(DateTime date) {
+    return date.subtract(Duration(days: date.weekday - 1));
+  }
+
+// Helper function to parse order date
+  DateTime? _parseDeliveryDate(dynamic deliveredAt) {
+    if (deliveredAt == null) return null;
+
+    try {
+      String dateStr = deliveredAt.toString();
+      if (dateStr.startsWith('Delivered on ')) {
+        dateStr = dateStr.replaceFirst('Delivered on ', '');
+      }
+      return DateFormat('MMMM d, yyyy \'at\' h:mm a').parse(dateStr.trim());
+    } catch (e) {
+      debugPrint("Error parsing deliveredAt: $e");
+      return null;
     }
   }
 
@@ -306,6 +377,45 @@ class _EarningScreenState extends State<EarningScreen> {
       });
     }
   }
+
+  Future<void> _checkRevenueReset() async {
+    final revenueSnapshot = await _dbRef.child('revenue').child(vendorId).once();
+    if (revenueSnapshot.snapshot.value == null) return;
+
+    final revenueData = revenueSnapshot.snapshot.value as Map<dynamic, dynamic>;
+    final now = DateTime.now();
+
+    // Check week reset
+    if (revenueData['currentWeek'] != null) {
+      final currentWeekStart = _getMonday(now);
+      final storedWeekStart = revenueData['currentWeek']['startDate'] as String;
+
+      if (storedWeekStart != DateFormat('yyyyMMdd').format(currentWeekStart)) {
+        // New week started, reset weekly data
+        await _dbRef.child('revenue').child(vendorId).child('currentWeek').update({
+          'startDate': DateFormat('yyyyMMdd').format(currentWeekStart),
+          'revenue': 0,
+          'revenueAfterCommission': 0
+        });
+      }
+    }
+
+    // Check month reset
+    if (revenueData['currentMonth'] != null) {
+      final currentMonth = DateFormat('yyyyMM').format(now);
+      final storedMonth = revenueData['currentMonth']['month'] as String;
+
+      if (storedMonth != currentMonth) {
+        // New month started, reset monthly data
+        await _dbRef.child('revenue').child(vendorId).child('currentMonth').update({
+          'month': currentMonth,
+          'revenue': 0,
+          'revenueAfterCommission': 0
+        });
+      }
+    }
+  }
+
   Future<void> _fetchChartData() async {
     final now = DateTime.now();
     final oneWeekAgo = now.subtract(const Duration(days: 7));
@@ -316,95 +426,82 @@ class _EarningScreenState extends State<EarningScreen> {
 
     final ordersMap = snapshot.snapshot.value as Map<dynamic, dynamic>;
 
-    Map<DateTime, int> weeklyData = {};
-    for (int i = 0; i < 7; i++) {
-      DateTime date = now.subtract(Duration(days: 6 - i));
-      weeklyData[DateTime(date.year, date.month, date.day)] = 0;
-    }
+    // Step 1: Create a map of all weekdays starting from Monday
+    Map<String, int> weekdayCounts = {
+      'Mon': 0,
+      'Tue': 0,
+      'Wed': 0,
+      'Thu': 0,
+      'Fri': 0,
+      'Sat': 0,
+      'Sun': 0,
+    };
 
-    Map<DateTime, int> monthlyData = {};
-    for (int i = 0; i < 30; i++) {
-      DateTime date = now.subtract(Duration(days: 29 - i));
-      monthlyData[DateTime(date.year, date.month, date.day)] = 0;
-    }
+    // Step 2: Monthly week buckets
+    Map<int, int> weeklyOrderCounts = {0: 0, 1: 0, 2: 0, 3: 0};
 
     ordersMap.forEach((orderId, orderData) {
       if (orderData['items'] == null) return;
 
-      DateTime? orderDate;
-
-      if (orderData['createdAt'] != null) {
-        try {
-          orderDate = DateFormat('d MMMM yyyy, h:mm a').parse(orderData['createdAt']);
-        } catch (e) {
-          debugPrint("Error parsing createdAt: $e");
-        }
-      }
-
-      if (orderDate == null && orderData['orderDate'] != null) {
-        try {
-          orderDate = DateFormat('yyyy-MM-dd').parse(orderData['orderDate']);
-        } catch (e) {
-          debugPrint("Error parsing orderDate: $e");
-        }
-      }
-
-      if (orderDate == null && orderData['timestamp'] != null) {
-        orderDate = DateTime.fromMillisecondsSinceEpoch(orderData['timestamp'] as int);
-      }
-
-      if (orderDate == null) return;
-
-      bool hasVendorItems = false;
+      bool hasVendorDeliveredItems = false;
       final items = orderData['items'] as Map<dynamic, dynamic>;
       items.forEach((itemId, itemData) {
         if (itemData['vendorId'] == vendorId && itemData['vendorStatus'] == 'delivered') {
-          hasVendorItems = true;
+          hasVendorDeliveredItems = true;
         }
       });
 
-      if (!hasVendorItems) return;
+      if (!hasVendorDeliveredItems) return;
 
-      final orderDay = DateTime(orderDate.year, orderDate.month, orderDate.day);
-      if (orderDate.isAfter(oneWeekAgo)) {
-        if (weeklyData.containsKey(orderDay)) {
-          weeklyData[orderDay] = weeklyData[orderDay]! + 1;
+      final deliveryDate = _parseDeliveryDate(orderData['deliveredAt']);
+      if (deliveryDate == null) return;
+
+      final deliveryDay = DateTime(deliveryDate.year, deliveryDate.month, deliveryDate.day);
+
+      // Weekly (Mon–Sun) data
+      if (deliveryDate.isAfter(oneWeekAgo)) {
+        final weekday = DateFormat('EEE').format(deliveryDay); // 'Mon', 'Tue', etc.
+        if (weekdayCounts.containsKey(weekday)) {
+          weekdayCounts[weekday] = weekdayCounts[weekday]! + 1;
         }
       }
 
-      if (orderDate.isAfter(oneMonthAgo)) {
-        if (monthlyData.containsKey(orderDay)) {
-          monthlyData[orderDay] = monthlyData[orderDay]! + 1;
+      // Monthly (week-wise)
+      if (deliveryDate.isAfter(oneMonthAgo)) {
+        final daysAgo = now.difference(deliveryDate).inDays;
+        final weekIndex = 3 - (daysAgo ~/ 7);
+        if (weekIndex >= 0 && weekIndex < 4) {
+          weeklyOrderCounts[weekIndex] = weeklyOrderCounts[weekIndex]! + 1;
         }
       }
     });
+
+    // Step 3: Weekly chart data (in fixed Mon-Sun order)
+    final orderedWeekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
     weeklySpots = [];
     weeklyLabels = [];
-    int dayIndex = 0;
-    weeklyData.forEach((date, count) {
-      weeklySpots.add(FlSpot(dayIndex.toDouble(), count.toDouble()));
-      weeklyLabels.add(DateFormat('EEE').format(date));
-      dayIndex++;
-    });
 
+    for (int i = 0; i < orderedWeekdays.length; i++) {
+      final day = orderedWeekdays[i];
+      weeklySpots.add(FlSpot(i.toDouble(), weekdayCounts[day]!.toDouble()));
+      weeklyLabels.add(day);
+    }
+
+    // Step 4: Monthly chart data
     monthlySpots = [];
     monthlyLabels = [];
-    int weekIndex = 0;
-    List<DateTime> monthlyDates = monthlyData.keys.toList()..sort();
-    for (int i = 0; i < monthlyDates.length; i += 7) {
-      int endIndex = i + 7 < monthlyDates.length ? i + 7 : monthlyDates.length;
-      int weeklyCount = 0;
-      for (int j = i; j < endIndex; j++) {
-        weeklyCount += monthlyData[monthlyDates[j]]!;
-      }
-      monthlySpots.add(FlSpot(weekIndex.toDouble(), weeklyCount.toDouble()));
+
+    for (int weekIndex = 0; weekIndex < 4; weekIndex++) {
+      monthlySpots.add(FlSpot(weekIndex.toDouble(), weeklyOrderCounts[weekIndex]!.toDouble()));
       monthlyLabels.add('Week ${weekIndex + 1}');
-      weekIndex++;
     }
 
     if (mounted) setState(() {});
   }
+
+
+
 
   bool _isOrderValid(Map<dynamic, dynamic> orderData) {
     if (vendorJoinDate == null) return true;
@@ -458,7 +555,7 @@ class _EarningScreenState extends State<EarningScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(icon, size: 30, color: iconColor),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Text(
               title,
               style: TextStyle(
@@ -470,8 +567,7 @@ class _EarningScreenState extends State<EarningScreen> {
             const SizedBox(height: 8),
             if (isRevenueCard) ...[
               Text(
-                "\$${(netAmount ?? 0).toInt()}",
-
+    "\$${(netAmount ?? 0).toStringAsFixed(2)}",
     style: TextStyle(
                   fontSize: 18,
                   color: isDarkMode ? Colors.white : Colors.black,
@@ -502,8 +598,7 @@ class _EarningScreenState extends State<EarningScreen> {
       ),
     );
   }
-
-  Widget _buildChart(bool isDarkMode) {
+  /*Widget _buildChart(bool isDarkMode) {
     final spots = selectedPeriod == "Weekly" ? weeklySpots : monthlySpots;
     final labels = selectedPeriod == "Weekly" ? weeklyLabels : monthlyLabels;
 
@@ -522,6 +617,12 @@ class _EarningScreenState extends State<EarningScreen> {
       );
     }
 
+
+    // Calculate max Y-value dynamically based on data
+    double maxYValue = spots.map((spot) => spot.y).reduce((a, b) => a > b ? a : b);
+    maxYValue = (maxYValue * 1.2).ceilToDouble(); // Add 20% padding
+    if (maxYValue < 14) maxYValue = 14; // Set minimum to 14
+
     return Container(
       height: 300,
       padding: const EdgeInsets.all(16),
@@ -537,13 +638,17 @@ class _EarningScreenState extends State<EarningScreen> {
                   drawHorizontalLine: true,
                   getDrawingHorizontalLine: (value) {
                     return FlLine(
-                      color: isDarkMode ? Colors.grey.withOpacity(0.1) : Colors.grey.withOpacity(0.3),
+                      color: isDarkMode
+                          ? Colors.grey.withOpacity(0.1)
+                          : Colors.grey.withOpacity(0.15),
                       strokeWidth: 1,
                     );
                   },
                   getDrawingVerticalLine: (value) {
                     return FlLine(
-                      color: isDarkMode ? Colors.grey.withOpacity(0.1) : Colors.grey.withOpacity(0.3),
+                      color: isDarkMode
+                          ? Colors.grey.withOpacity(0.1)
+                          : Colors.grey.withOpacity(0.15),
                       strokeWidth: 1,
                     );
                   },
@@ -576,7 +681,8 @@ class _EarningScreenState extends State<EarningScreen> {
                     sideTitles: SideTitles(
                       showTitles: true,
                       getTitlesWidget: (value, meta) {
-                        if (value % 50 == 0) {
+                        final List<double> visibleValues = [0, 2, 4, 6, 8, 10, 12, 14];
+                        if (visibleValues.contains(value)) {
                           return Text(
                             value.toInt().toString(),
                             style: TextStyle(
@@ -588,29 +694,21 @@ class _EarningScreenState extends State<EarningScreen> {
                         return const Text('');
                       },
                       reservedSize: 32,
-                      interval: 50,
+                      interval: 1,
                     ),
                   ),
-                  rightTitles: const AxisTitles(
+                  rightTitles: AxisTitles(
                     sideTitles: SideTitles(showTitles: false),
                   ),
-                  topTitles: const AxisTitles(
+                  topTitles: AxisTitles(
                     sideTitles: SideTitles(showTitles: false),
                   ),
                 ),
-                borderData: FlBorderData(
-                  show: true,
-                  border: Border(
-                    bottom: BorderSide(color: isDarkMode ? Colors.grey.withOpacity(0.3) : Colors.black26, width: 1),
-                    left: BorderSide(color: isDarkMode ? Colors.grey.withOpacity(0.3) : Colors.black26, width: 1),
-                    right: BorderSide(color: Colors.transparent),
-                    top: BorderSide(color: Colors.transparent),
-                  ),
-                ),
+                borderData: FlBorderData(show: false),
                 minX: 0,
                 maxX: (spots.length - 1).toDouble(),
                 minY: 0,
-                maxY: 300,
+                maxY: maxYValue,
                 lineBarsData: [
                   LineChartBarData(
                     spots: spots,
@@ -622,7 +720,179 @@ class _EarningScreenState extends State<EarningScreen> {
                       show: true,
                       getDotPainter: (spot, percent, barData, index) {
                         return FlDotCirclePainter(
-                          radius: 3,
+                          radius: 4,
+                          color: const Color(0xFFFF4A49),
+                          strokeWidth: 2,
+                          strokeColor:
+                          isDarkMode ? Colors.grey[900]! : Colors.white,
+                        );
+                      },
+                    ),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          const Color(0xFFFF4A49).withOpacity(0.3),
+                          const Color(0xFFFF4A49).withOpacity(0.1),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }*/
+
+  Widget _buildChart(bool isDarkMode) {
+    final spots = selectedPeriod == "Weekly" ? weeklySpots : monthlySpots;
+    final labels = selectedPeriod == "Weekly" ? weeklyLabels : monthlyLabels;
+
+    if (spots.isEmpty) {
+      return Container(
+        height: 300,
+        child: Center(
+          child: Text(
+            "No sales data available",
+            style: TextStyle(
+              fontSize: 16,
+              color: isDarkMode ? Colors.white70 : Colors.black54,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Unified maxY calculation from both datasets
+    final combinedSpots = [...weeklySpots, ...monthlySpots];
+    double maxYValue = combinedSpots.map((spot) => spot.y).reduce((a, b) => a > b ? a : b);
+    maxYValue = (maxYValue * 1.2).ceilToDouble();
+    if (maxYValue < 14) maxYValue = 14;
+
+    return Container(
+      height: 300,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          const SizedBox(height: 1),
+          Expanded(
+            child: LineChart(
+              LineChartData(
+                lineTouchData: LineTouchData(
+                  enabled: true,
+                  touchTooltipData: LineTouchTooltipData(
+                    tooltipBgColor: isDarkMode ? Colors.black87 : Colors.white,
+                    tooltipRoundedRadius: 8,
+                    tooltipPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    fitInsideHorizontally: true,
+                    fitInsideVertically: true,
+                    tooltipBorder: BorderSide(
+                      color: isDarkMode ? Colors.white30 : Colors.black87,
+                      width: 1.5,
+                    ),
+                    getTooltipItems: (touchedSpots) {
+                      return touchedSpots.map((touchedSpot) {
+                        return LineTooltipItem(
+                          '${touchedSpot.y.toInt()}',
+                          TextStyle(
+                            color: isDarkMode ? Colors.white : Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        );
+                      }).toList();
+                    },
+                  ),
+                ),
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: true,
+                  drawHorizontalLine: true,
+                  getDrawingHorizontalLine: (value) {
+                    return FlLine(
+                      color: isDarkMode ? Colors.grey.withOpacity(0.1) : Colors.grey.withOpacity(0.15),
+                      strokeWidth: 1,
+                    );
+                  },
+                  getDrawingVerticalLine: (value) {
+                    return FlLine(
+                      color: isDarkMode ? Colors.grey.withOpacity(0.1) : Colors.grey.withOpacity(0.15),
+                      strokeWidth: 1,
+                    );
+                  },
+                ),
+                titlesData: FlTitlesData(
+                  show: true,
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (value, meta) {
+                        if (value.toInt() >= 0 && value.toInt() < labels.length) {
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Text(
+                              labels[value.toInt()],
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isDarkMode ? Colors.white70 : Colors.black54,
+                              ),
+                            ),
+                          );
+                        }
+                        return const Text('');
+                      },
+                      reservedSize: 22,
+                      interval: 1,
+                    ),
+                  ),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (value, meta) {
+                        if (value % 2 == 0 && value <= maxYValue) {
+                          return Text(
+                            value.toInt().toString(),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDarkMode ? Colors.white70 : Colors.black54,
+                            ),
+                          );
+                        }
+                        return const Text('');
+                      },
+                      reservedSize: 32,
+                      interval: 1,
+                    ),
+                  ),
+                  rightTitles: AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  topTitles: AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                ),
+                borderData: FlBorderData(show: false),
+                minX: 0,
+                maxX: (spots.length - 1).toDouble(),
+                minY: 0,
+                maxY: maxYValue,
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: spots,
+                    isCurved: false,
+                    color: const Color(0xFFFF4A49),
+                    barWidth: 3,
+                    isStrokeCapRound: true,
+                    dotData: FlDotData(
+                      show: true,
+                      getDotPainter: (spot, percent, barData, index) {
+                        return FlDotCirclePainter(
+                          radius: 4,
                           color: const Color(0xFFFF4A49),
                           strokeWidth: 2,
                           strokeColor: isDarkMode ? Colors.grey[900]! : Colors.white,
@@ -631,7 +901,14 @@ class _EarningScreenState extends State<EarningScreen> {
                     ),
                     belowBarData: BarAreaData(
                       show: true,
-                      color: const Color(0xFFFF4A49).withOpacity(0.2),
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          const Color(0xFFFF4A49).withOpacity(0.3),
+                          const Color(0xFFFF4A49).withOpacity(0.1),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -643,6 +920,11 @@ class _EarningScreenState extends State<EarningScreen> {
     );
   }
 
+
+
+
+
+
   @override
   Widget build(BuildContext context) {
     final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -653,79 +935,80 @@ class _EarningScreenState extends State<EarningScreen> {
       backgroundColor: primaryColor,
 
 // Update your app bar like this:
-    appBar: AppBar(
-    elevation: 0,
-      backgroundColor: const Color(0xFFFF4A49),
-      automaticallyImplyLeading: false,
-      title: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            "Hi, $userName! 👋",
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-              fontFamily: 'Poppins',
-            ),
-          ),
-          Stack(
-            children: [
-              IconButton(
-                onPressed: () async {
-                  final result = await Navigator.push(
-                    context,
-                    PageRouteBuilder(
-                      pageBuilder: (context, animation, secondaryAnimation) =>
-                          VendorChatListScreen(vendorId: vendorId),
-                      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                        return FadeTransition(opacity: animation, child: child);
-                      },
-                    ),
-                  );
-                  // Update the count when returning from chat screen
-                  if (result != null) {
-                    setState(() {
-                      _unreadChatCount = result;
-                    });
-                  }
-                },
-                icon: const Icon(
-                  Icons.chat,
-                  color: Colors.white,
-                  size: 20,
-                ),
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: const Color(0xFFFF4A49),
+        automaticallyImplyLeading: false,
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              "Hi, $userName! 👋",
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                fontFamily: 'Poppins',
               ),
-              if (_unreadChatCount > 0)
-                Positioned(
-                  right: 8,
-                  top: 4,
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color: Color(0xFF2E7D32),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    constraints: const BoxConstraints(
-                      minWidth: 16,
-                      minHeight: 16,
-                    ),
-                    child: Text(
-                      '$_unreadChatCount',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+            ),
+            Stack(
+              children: [
+                // Inside EarningScreen's appBar actions
+                IconButton(
+                  onPressed: () async {
+                    final result = await Navigator.push(
+                      context,
+                      PageRouteBuilder(
+                        pageBuilder: (context, animation, secondaryAnimation) =>
+                            VendorChatListScreen(vendorId: vendorId),
+                        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                          return FadeTransition(opacity: animation, child: child);
+                        },
                       ),
-                      textAlign: TextAlign.center,
-                    ),
+                    );
+                    // Update the count when returning from chat screen
+                    if (result != null) {
+                      setState(() {
+                        _unreadChatCount = result;
+                      });
+                    }
+                  },
+                  icon: const Icon(
+                    Icons.chat,
+                    color: Colors.white,
+                    size: 20,
                   ),
                 ),
-            ],
-          ),
-        ],
+                if (_unreadChatCount > 0)
+                  Positioned(
+                    right: 8,
+                    top: 4,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: Color(0xFF2E7D32),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 16,
+                        minHeight: 16,
+                      ),
+                      child: Text(
+                        '$_unreadChatCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
       ),
-    ),
       body: isLoading
           ? Center(
         child: CircularProgressIndicator(
@@ -846,9 +1129,12 @@ class _EarningScreenState extends State<EarningScreen> {
             ),
             const SizedBox(height: 8),
             _buildChart(isDarkMode),
+            // Inside EarningScreen's build method, after the chart
           ],
         ),
       ),
     );
   }
+
+
 }

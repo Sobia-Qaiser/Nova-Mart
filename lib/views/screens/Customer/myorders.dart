@@ -48,7 +48,12 @@ class MyOrders extends StatelessWidget {
 
     if (allDelivered) {
       updates['status'] = 'Delivered';
-      updates['deliveredAt'] = deliveredAt;
+
+      // 🛑 Check if deliveredAt already exists — don’t overwrite it
+      final deliveredSnapshot = await ordersRef.child('deliveredAt').get();
+      if (!deliveredSnapshot.exists) {
+        updates['deliveredAt'] = deliveredAt;
+      }
     } else if (allProcessing) {
       updates['status'] = 'Processing';
     } else {
@@ -59,6 +64,7 @@ class MyOrders extends StatelessWidget {
       await ordersRef.update(updates);
     }
   }
+
 
   String _determineOrderStatus(Map<dynamic, dynamic>? itemsData) {
     if (itemsData == null) return 'Pending';
