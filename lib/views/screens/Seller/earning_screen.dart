@@ -567,7 +567,7 @@ class _EarningScreenState extends State<EarningScreen> {
             const SizedBox(height: 8),
             if (isRevenueCard) ...[
               Text(
-    "\$${(netAmount ?? 0).toStringAsFixed(2)}",
+    "\$${(netAmount ?? 0).toInt()}",
     style: TextStyle(
                   fontSize: 18,
                   color: isDarkMode ? Colors.white : Colors.black,
@@ -772,7 +772,7 @@ class _EarningScreenState extends State<EarningScreen> {
     final combinedSpots = [...weeklySpots, ...monthlySpots];
     double maxYValue = combinedSpots.map((spot) => spot.y).reduce((a, b) => a > b ? a : b);
     maxYValue = (maxYValue * 1.2).ceilToDouble();
-    if (maxYValue < 14) maxYValue = 14;
+    if (maxYValue < 30) maxYValue = 30; // ✅ Changed from 14 to 30
 
     return Container(
       height: 300,
@@ -854,7 +854,7 @@ class _EarningScreenState extends State<EarningScreen> {
                     sideTitles: SideTitles(
                       showTitles: true,
                       getTitlesWidget: (value, meta) {
-                        if (value % 2 == 0 && value <= maxYValue) {
+                        if (value % 5 == 0 && value <= maxYValue) {
                           return Text(
                             value.toInt().toString(),
                             style: TextStyle(
@@ -866,7 +866,7 @@ class _EarningScreenState extends State<EarningScreen> {
                         return const Text('');
                       },
                       reservedSize: 32,
-                      interval: 1,
+                      interval: 5, // ✅ Keeps labels at 5-step interval
                     ),
                   ),
                   rightTitles: AxisTitles(
@@ -919,6 +919,8 @@ class _EarningScreenState extends State<EarningScreen> {
       ),
     );
   }
+
+
 
 
 

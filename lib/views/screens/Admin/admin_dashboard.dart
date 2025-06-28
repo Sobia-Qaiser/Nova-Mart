@@ -174,6 +174,21 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
   }
 
+  // Helper function to parse order date
+  DateTime? _parseDeliveryDate(dynamic deliveredAt) {
+    if (deliveredAt == null) return null;
+
+    try {
+      String dateStr = deliveredAt.toString();
+      if (dateStr.startsWith('Delivered on ')) {
+        dateStr = dateStr.replaceFirst('Delivered on ', '');
+      }
+      return DateFormat('MMMM d, yyyy \'at\' h:mm a').parse(dateStr.trim());
+    } catch (e) {
+      debugPrint("Error parsing deliveredAt: $e");
+      return null;
+    }
+  }
 
 
   Future<void> _fetchChartData() async {
@@ -186,85 +201,74 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
     final ordersMap = snapshot.snapshot.value as Map<dynamic, dynamic>;
 
-    Map<DateTime, int> weeklyData = {};
-    for (int i = 0; i < 7; i++) {
-      DateTime date = now.subtract(Duration(days: 6 - i));
-      weeklyData[DateTime(date.year, date.month, date.day)] = 0;
-    }
+    // Weekly Order Count (Mon–Sun)
+    Map<String, int> weekdayCounts = {
+      'Mon': 0, 'Tue': 0, 'Wed': 0, 'Thu': 0, 'Fri': 0, 'Sat': 0, 'Sun': 0,
+    };
 
-    Map<DateTime, int> monthlyData = {};
-    for (int i = 0; i < 30; i++) {
-      DateTime date = now.subtract(Duration(days: 29 - i));
-      monthlyData[DateTime(date.year, date.month, date.day)] = 0;
-    }
+    // Monthly Order Count (4 Weeks)
+    Map<int, int> weeklyOrderCounts = {0: 0, 1: 0, 2: 0, 3: 0};
 
     ordersMap.forEach((orderId, orderData) {
       if (orderData['items'] == null) return;
 
-      DateTime? orderDate;
+      bool isAnyItemDelivered = false;
 
-      if (orderData['createdAt'] != null) {
-        try {
-          orderDate = DateFormat('d MMMM yyyy, h:mm a').parse(orderData['createdAt']);
-        } catch (e) {
-          debugPrint("Error parsing createdAt: $e");
+      final items = orderData['items'] as Map<dynamic, dynamic>;
+      items.forEach((itemId, itemData) {
+        if (itemData['vendorStatus'] == 'delivered') {
+          isAnyItemDelivered = true;
+        }
+      });
+
+      if (!isAnyItemDelivered) return;
+
+      final deliveryDate = _parseDeliveryDate(orderData['deliveredAt']);
+      if (deliveryDate == null) return;
+
+      final weekday = DateFormat('EEE').format(deliveryDate);
+
+      // === Weekly Count ===
+      if (deliveryDate.isAfter(oneWeekAgo)) {
+        if (weekdayCounts.containsKey(weekday)) {
+          weekdayCounts[weekday] = weekdayCounts[weekday]! + 1;
         }
       }
 
-      if (orderDate == null && orderData['orderDate'] != null) {
-        try {
-          orderDate = DateFormat('yyyy-MM-dd').parse(orderData['orderDate']);
-        } catch (e) {
-          debugPrint("Error parsing orderDate: $e");
-        }
-      }
-
-      if (orderDate == null && orderData['timestamp'] != null) {
-        orderDate = DateTime.fromMillisecondsSinceEpoch(orderData['timestamp'] as int);
-      }
-
-      if (orderDate == null) return;
-
-      final orderDay = DateTime(orderDate.year, orderDate.month, orderDate.day);
-      if (orderDate.isAfter(oneWeekAgo)) {
-        if (weeklyData.containsKey(orderDay)) {
-          weeklyData[orderDay] = weeklyData[orderDay]! + 1;
-        }
-      }
-
-      if (orderDate.isAfter(oneMonthAgo)) {
-        if (monthlyData.containsKey(orderDay)) {
-          monthlyData[orderDay] = monthlyData[orderDay]! + 1;
+      // === Monthly Count ===
+      if (deliveryDate.isAfter(oneMonthAgo)) {
+        final daysAgo = now.difference(deliveryDate).inDays;
+        final weekIndex = 3 - (daysAgo ~/ 7);
+        if (weekIndex >= 0 && weekIndex < 4) {
+          weeklyOrderCounts[weekIndex] = weeklyOrderCounts[weekIndex]! + 1;
         }
       }
     });
 
+    // === Weekly Spots ===
+    final orderedWeekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     weeklySpots = [];
     weeklyLabels = [];
-    int dayIndex = 0;
-    weeklyData.forEach((date, count) {
-      weeklySpots.add(FlSpot(dayIndex.toDouble(), count.toDouble()));
-      weeklyLabels.add(DateFormat('EEE').format(date));
-      dayIndex++;
-    });
 
+    for (int i = 0; i < orderedWeekdays.length; i++) {
+      final day = orderedWeekdays[i];
+      weeklySpots.add(FlSpot(i.toDouble(), weekdayCounts[day]!.toDouble()));
+      weeklyLabels.add(day);
+    }
+
+    // === Monthly Spots ===
     monthlySpots = [];
     monthlyLabels = [];
-    int weekIndex = 0;
-    List<DateTime> monthlyDates = monthlyData.keys.toList()..sort();
-    for (int i = 0; i < monthlyDates.length; i += 7) {
-      int endIndex = i + 7 < monthlyDates.length ? i + 7 : monthlyDates.length;
-      int weeklyCount = 0;
-      for (int j = i; j < endIndex; j++) {
-        weeklyCount += monthlyData[monthlyDates[j]]!;
-      }
-      monthlySpots.add(FlSpot(weekIndex.toDouble(), weeklyCount.toDouble()));
+
+    for (int weekIndex = 0; weekIndex < 4; weekIndex++) {
+      monthlySpots.add(FlSpot(weekIndex.toDouble(), weeklyOrderCounts[weekIndex]!.toDouble()));
       monthlyLabels.add('Week ${weekIndex + 1}');
-      weekIndex++;
     }
 
     if (mounted) setState(() {});
   }
+
+
 
   Widget _buildStatCard({
     required IconData icon,
@@ -366,15 +370,11 @@ class _AdminDashboardState extends State<AdminDashboard> {
       );
     }
 
-    // ✅ Custom maxY based on period
-    double maxYValue;
-    if (selectedPeriod == "Monthly") {
-      maxYValue = 20;
-    } else {
-      maxYValue = spots.map((s) => s.y).reduce((a, b) => a > b ? a : b);
-      maxYValue = (maxYValue * 1.2).ceilToDouble();
-      if (maxYValue < 14) maxYValue = 14;
-    }
+    // Unified maxY calculation from both datasets
+    final combinedSpots = [...weeklySpots, ...monthlySpots];
+    double maxYValue = combinedSpots.map((spot) => spot.y).reduce((a, b) => a > b ? a : b);
+    maxYValue = (maxYValue * 1.2).ceilToDouble();
+    if (maxYValue < 14) maxYValue = 14;
 
     return Container(
       height: 300,
@@ -385,19 +385,45 @@ class _AdminDashboardState extends State<AdminDashboard> {
           Expanded(
             child: LineChart(
               LineChartData(
+                lineTouchData: LineTouchData(
+                  enabled: true,
+                  touchTooltipData: LineTouchTooltipData(
+                    tooltipBgColor: isDarkMode ? Colors.black87 : Colors.white,
+                    tooltipRoundedRadius: 8,
+                    tooltipPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    fitInsideHorizontally: true,
+                    fitInsideVertically: true,
+                    tooltipBorder: BorderSide(
+                      color: isDarkMode ? Colors.white30 : Colors.black87,
+                      width: 1.5,
+                    ),
+                    getTooltipItems: (touchedSpots) {
+                      return touchedSpots.map((touchedSpot) {
+                        return LineTooltipItem(
+                          '${touchedSpot.y.toInt()}',
+                          TextStyle(
+                            color: isDarkMode ? Colors.white : Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        );
+                      }).toList();
+                    },
+                  ),
+                ),
                 gridData: FlGridData(
                   show: true,
                   drawVerticalLine: true,
                   drawHorizontalLine: true,
                   getDrawingHorizontalLine: (value) {
                     return FlLine(
-                      color: isDarkMode ? Colors.grey.withOpacity(0.1) : Colors.grey.withOpacity(0.3),
+                      color: isDarkMode ? Colors.grey.withOpacity(0.1) : Colors.grey.withOpacity(0.15),
                       strokeWidth: 1,
                     );
                   },
                   getDrawingVerticalLine: (value) {
                     return FlLine(
-                      color: isDarkMode ? Colors.grey.withOpacity(0.1) : Colors.grey.withOpacity(0.3),
+                      color: isDarkMode ? Colors.grey.withOpacity(0.1) : Colors.grey.withOpacity(0.15),
                       strokeWidth: 1,
                     );
                   },
@@ -430,7 +456,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     sideTitles: SideTitles(
                       showTitles: true,
                       getTitlesWidget: (value, meta) {
-                        if (value % 5 == 0) {
+                        if (value % 5 == 0 && value <= maxYValue) {
                           return Text(
                             value.toInt().toString(),
                             style: TextStyle(
@@ -442,25 +468,21 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         return const Text('');
                       },
                       reservedSize: 32,
-                      interval: 5,
+                      interval: 5, // 👈 Yahan interval 5 set kiya gaya hai
                     ),
                   ),
-                  rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                ),
-                borderData: FlBorderData(
-                  show: true,
-                  border: Border(
-                    bottom: BorderSide(color: isDarkMode ? Colors.grey.withOpacity(0.3) : Colors.black26, width: 1),
-                    left: BorderSide(color: isDarkMode ? Colors.grey.withOpacity(0.3) : Colors.black26, width: 1),
-                    right: BorderSide(color: Colors.transparent),
-                    top: BorderSide(color: Colors.transparent),
+                  rightTitles: AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  topTitles: AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
                   ),
                 ),
+                borderData: FlBorderData(show: false),
                 minX: 0,
                 maxX: (spots.length - 1).toDouble(),
                 minY: 0,
-                maxY: maxYValue, // ✅ set dynamic maxY
+                maxY: maxYValue,
                 lineBarsData: [
                   LineChartBarData(
                     spots: spots,
@@ -472,7 +494,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       show: true,
                       getDotPainter: (spot, percent, barData, index) {
                         return FlDotCirclePainter(
-                          radius: 3,
+                          radius: 4,
                           color: const Color(0xFFFF4A49),
                           strokeWidth: 2,
                           strokeColor: isDarkMode ? Colors.grey[900]! : Colors.white,
@@ -481,7 +503,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     ),
                     belowBarData: BarAreaData(
                       show: true,
-                      color: const Color(0xFFFF4A49).withOpacity(0.2),
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          const Color(0xFFFF4A49).withOpacity(0.3),
+                          const Color(0xFFFF4A49).withOpacity(0.1),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -492,6 +521,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       ),
     );
   }
+
 
 
   @override
