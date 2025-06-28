@@ -9,6 +9,7 @@ import 'package:multi_vendor_ecommerce_app/views/screens/Admin/sidebar_screen/up
 import 'package:multi_vendor_ecommerce_app/views/screens/Admin/sidebar_screen/vendor_screen.dart';
 import 'package:multi_vendor_ecommerce_app/views/screens/Admin/sidebar_screen/withdrawl_screen.dart';
 import 'package:multi_vendor_ecommerce_app/views/screens/Customer/login_screen.dart';
+import 'VendorPaymentScreen.dart';
 import 'component.dart';
 
 class DrawerContent extends StatefulWidget {
@@ -83,6 +84,11 @@ class _DrawerContentState extends State<DrawerContent> {
             icon: Icons.shopping_cart,
             title: "Orders",
             onTap: () => _navigateTo(OrderManagementPage()),
+          ),
+          _buildSpacedListTile(
+            icon: Icons.payment,
+            title: "Payments",
+            onTap: () => _navigateTo(VendorPaymentsScreen()),
           ),
 
           _buildSpacedListTile(

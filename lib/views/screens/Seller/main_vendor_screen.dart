@@ -5,6 +5,8 @@ import 'package:multi_vendor_ecommerce_app/views/screens/Seller/earning_screen.d
 import 'package:multi_vendor_ecommerce_app/views/screens/Seller/edit_screen.dart';
 import 'package:multi_vendor_ecommerce_app/views/screens/Seller/profilevender_screen.dart';
 
+import 'SellerEarnings.dart';
+
 
 class MainVendorScreen extends StatefulWidget {
   final int initialIndex;
@@ -23,6 +25,7 @@ class _MainVendorScreenState extends State<MainVendorScreen> {
     EarningScreen(),
     UploadScreen(),
     VendorOrdersScreen(),
+    Earning(),
     ProfileScreen(),
   ];
 
@@ -50,7 +53,7 @@ class _MainVendorScreenState extends State<MainVendorScreen> {
           fontFamily: 'Poppins',
         ),
         unselectedLabelStyle: const TextStyle(
-          fontSize: 12,
+          fontSize: 11,
           fontWeight: FontWeight.bold,
           fontFamily: 'Poppins',
         ),
@@ -58,7 +61,8 @@ class _MainVendorScreenState extends State<MainVendorScreen> {
           _buildNavItem(Icons.dashboard_customize_outlined, Icons.dashboard_customize, 'Dashboard', 0),
           _buildNavItem(Icons.local_mall_outlined, Icons.local_mall, 'Products', 1),
           _buildNavItem(Icons.list_outlined, Icons.list_rounded, 'Orders', 2),
-          _buildNavItem(Icons.person_outline, Icons.person, 'Account', 3),
+          _buildNavItem(Icons.attach_money_outlined, Icons.attach_money, 'Earnings', 3),
+          _buildNavItem(Icons.person_outline, Icons.person, 'Account', 4),
         ],
       ),
       body: pages[pageIndex],

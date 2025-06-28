@@ -58,7 +58,7 @@ class _StoreDetailsState extends State<StoreDetails> {
           final rawMap = Map<Object?, Object?>.from(snapshot.value as Map);
           final formattedMap = rawMap.map((key, value) => MapEntry(key.toString(), value));
 
-          print('✅ Fetched vendor data: $formattedMap');
+          print('Fetched vendor data: $formattedMap');
 
           setState(() {
             _vendorData = formattedMap;
@@ -67,13 +67,13 @@ class _StoreDetailsState extends State<StoreDetails> {
             _isLoading = false;
           });
         } else {
-          print('⚠️ No data found for user');
+          print('No data found for user');
         }
       } else {
-        print('⚠️ No current user logged in');
+        print('No current user logged in');
       }
     } catch (e) {
-      print('❌ Error fetching vendor data: $e');
+      print('Error fetching vendor data: $e');
       setState(() => _isLoading = false);
     }
   }
