@@ -35,21 +35,27 @@ class _RevenueScreenState extends State<RevenueScreen> {
 
         // Sort by this month's revenue (descending)
         vendors.sort((a, b) {
-          final aRevenue = (b.value["thisMonthEarningAfterCommission"] ?? 0).toInt();
-          final bRevenue = (a.value["thisMonthEarningAfterCommission"] ?? 0).toInt();
+          final aMonthData = a.value["currentMonth"] ?? {};
+          final bMonthData = b.value["currentMonth"] ?? {};
+          final aRevenue = (bMonthData["revenueAfterCommission"] ?? 0).toInt();
+          final bRevenue = (aMonthData["revenueAfterCommission"] ?? 0).toInt();
           return aRevenue.compareTo(bRevenue);
         });
 
-        // Now assign serial numbers based on sorted order
+        // Now assign data with correct fields
         for (int i = 0; i < vendors.length; i++) {
           final vendorData = Map<String, dynamic>.from(vendors[i].value as Map);
+          final currentMonth = vendorData["currentMonth"] ?? {};
+          final currentWeek = vendorData["currentWeek"] ?? {};
+
           _vendorRevenues.add({
             "vendorId": vendors[i].key,
-            "srNo": i + 1,  // This will give sequential numbers 1, 2, 3...
+            "srNo": i + 1,
             "vendorName": vendorData["vendorName"] ?? "Unknown",
             "businessName": vendorData["businessName"] ?? "Unknown",
             "totalRevenue": (vendorData["totalRevenueAfterCommission"] ?? 0).toInt(),
-            "thisMonth": (vendorData["thisMonthEarningAfterCommission"] ?? 0).toInt(),
+            "thisMonth": (currentMonth["revenueAfterCommission"] ?? 0).toInt(),
+            "thisWeek": (currentWeek["revenueAfterCommission"] ?? 0).toInt(),
           });
         }
       }
@@ -122,166 +128,185 @@ class _RevenueScreenState extends State<RevenueScreen> {
           ? Center(
         child: CircularProgressIndicator(
           valueColor: AlwaysStoppedAnimation<Color>(const Color(0xFFFF4A49)),
-        ))
-            : _vendorRevenues.isEmpty
-      ? Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        ),
+      )
+          : _vendorRevenues.isEmpty
+          ? Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'No Revenue Data Available',
+              style: TextStyle(
+                fontSize: 18,
+                fontFamily: 'Poppins',
+                color: Colors.grey.shade600,
+              ),
+            ),
+          ],
+        ),
+      )
+          : Column(
         children: [
-          Text(
-            'No Revenue Data Available',
-            style: TextStyle(
-              fontSize: 18,
-              fontFamily: 'Poppins',
-              color: Colors.grey.shade600,
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.grey.shade100, Colors.grey.shade50],
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Scrollbar(
+                  thumbVisibility: true,
+                  thickness: 8,
+                  radius: const Radius.circular(4),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withOpacity(0.1),
+                              spreadRadius: 2,
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            )
+                          ],
+                        ),
+                        child: DataTable(
+                          headingRowColor:
+                          MaterialStateProperty.resolveWith<Color>(
+                                  (states) => Colors.pink.shade50),
+                          columnSpacing: 30,
+                          horizontalMargin: 20,
+                          columns: const [
+                            DataColumn(
+                                label: Text('Sr#',
+                                    style: TextStyle(
+                                        fontSize: 15,
+                                        fontFamily: 'Poppins',
+                                        fontWeight: FontWeight.bold))),
+                            DataColumn(
+                                label: Text('Vendor',
+                                    style: TextStyle(
+                                        fontSize: 15,
+                                        fontFamily: 'Poppins',
+                                        fontWeight: FontWeight.bold))),
+                            DataColumn(
+                                label: Text('Business',
+                                    style: TextStyle(
+                                        fontSize: 15,
+                                        fontFamily: 'Poppins',
+                                        fontWeight: FontWeight.bold))),
+                            DataColumn(
+                                label: Text('Total Revenue',
+                                    style: TextStyle(
+                                        fontSize: 15,
+                                        fontFamily: 'Poppins',
+                                        fontWeight: FontWeight.bold))),
+                            DataColumn(
+                                label: Text('This Month',
+                                    style: TextStyle(
+                                        fontSize: 15,
+                                        fontFamily: 'Poppins',
+                                        fontWeight: FontWeight.bold))),
+                            DataColumn(
+                                label: Text('This Week',
+                                    style: TextStyle(
+                                        fontSize: 15,
+                                        fontFamily: 'Poppins',
+                                        fontWeight: FontWeight.bold))),
+                          ],
+                          rows: _displayedVendors.map((vendor) {
+                            return DataRow(
+                              cells: [
+                                DataCell(Text(vendor['srNo'].toString(),
+                                    style: const TextStyle(
+                                        fontSize: 15,
+                                        fontFamily: 'Poppins'))),
+                                DataCell(Text(vendor['vendorName'],
+                                    style: const TextStyle(
+                                        fontSize: 15,
+                                        fontFamily: 'Poppins'))),
+                                DataCell(Text(vendor['businessName'],
+                                    style: const TextStyle(
+                                        fontSize: 15,
+                                        fontFamily: 'Poppins'))),
+                                DataCell(
+                                  Text(
+                                    '\$${NumberFormat('#,##0').format(vendor['totalRevenue'])}',
+                                    style: const TextStyle(
+                                        fontSize: 15,
+                                        fontFamily: 'Poppins'),
+                                  ),
+                                ),
+                                DataCell(
+                                  Text(
+                                    '\$${NumberFormat('#,##0').format(vendor['thisMonth'])}',
+                                    style: const TextStyle(
+                                        fontSize: 15,
+                                        fontFamily: 'Poppins'),
+                                  ),
+                                ),
+                                DataCell(
+                                  Text(
+                                    '\$${NumberFormat('#,##0').format(vendor['thisWeek'])}',
+                                    style: const TextStyle(
+                                        fontSize: 15,
+                                        fontFamily: 'Poppins'),
+                                  ),
+                                ),
+                              ],
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back_ios, size: 16),
+                  onPressed: _prevPage,
+                  color: _currentPage > 1
+                      ? const Color(0xFFFF4A49)
+                      : Colors.grey,
+                ),
+                Text(
+                  'Page $_currentPage of ${(_vendorRevenues.length / _vendorsPerPage).ceil()}',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontFamily: 'Poppins',
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onPressed: _nextPage,
+                  color: _currentPage * _vendorsPerPage <
+                      _vendorRevenues.length
+                      ? const Color(0xFFFF4A49)
+                      : Colors.grey,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
         ],
       ),
-    )
-        : Column(
-    children: [
-    Expanded(
-    child: Container(
-    decoration: BoxDecoration(
-    gradient: LinearGradient(
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-    colors: [Colors.grey.shade100, Colors.grey.shade50],
-    ),
-    ),
-    child: Padding(
-    padding: const EdgeInsets.all(16.0),
-    child: Scrollbar(
-    thumbVisibility: true,
-    thickness: 8,
-    radius: const Radius.circular(4),
-    child: SingleChildScrollView(
-    scrollDirection: Axis.horizontal,
-    child: ClipRRect(
-    borderRadius: BorderRadius.circular(12),
-    child: Container(
-    decoration: BoxDecoration(
-    color: Colors.white,
-    boxShadow: [
-    BoxShadow(
-    color: Colors.grey.withOpacity(0.1),
-    spreadRadius: 2,
-    blurRadius: 8,
-    offset: const Offset(0, 2),
-    )
-    ],
-    ),
-    child: DataTable(
-    headingRowColor:
-    MaterialStateProperty.resolveWith<Color>(
-    (states) => Colors.pink.shade50),
-    columnSpacing: 30,
-    horizontalMargin: 20,
-    columns: const [
-    DataColumn(
-    label: Text('Sr#',
-    style: TextStyle(
-    fontSize: 15,
-    fontFamily: 'Poppins',
-    fontWeight: FontWeight.bold))),
-    DataColumn(
-    label: Text('Vendor Name',
-    style: TextStyle(
-    fontSize: 15,
-    fontFamily: 'Poppins',
-    fontWeight: FontWeight.bold))),
-    DataColumn(
-    label: Text('Business',
-    style: TextStyle(
-    fontSize: 15,
-    fontFamily: 'Poppins',
-    fontWeight: FontWeight.bold))),
-    DataColumn(
-    label: Text('Total Revenue',
-    style: TextStyle(
-    fontSize: 15,
-    fontFamily: 'Poppins',
-    fontWeight: FontWeight.bold))),
-    DataColumn(
-    label: Text('This Month',
-    style: TextStyle(
-    fontSize: 15,
-    fontFamily: 'Poppins',
-    fontWeight: FontWeight.bold))),
-    ],
-    rows: _displayedVendors.map((vendor) {
-    return DataRow(
-    cells: [
-    DataCell(Text(vendor['srNo'].toString(),
-    style: const TextStyle(
-    fontSize: 15,
-    fontFamily: 'Poppins'))),
-    DataCell(Text(vendor['vendorName'],
-    style: const TextStyle(
-    fontSize: 15,
-    fontFamily: 'Poppins'))),
-    DataCell(Text(vendor['businessName'],
-    style: const TextStyle(
-    fontSize: 15,
-    fontFamily: 'Poppins'))),
-    DataCell(
-    Text(
-    '\$${NumberFormat('#,##0').format(vendor['totalRevenue'])}',
-    style: const TextStyle(
-    fontSize: 15,
-    fontFamily: 'Poppins'))),
-    DataCell(
-    Text(
-    '\$${NumberFormat('#,##0').format(vendor['thisMonth'])}',
-    style: const TextStyle(
-    fontSize: 15,
-    fontFamily: 'Poppins'))),
-    ],
-    );
-    }).toList(),
-    ),
-    ),
-    ),
-    ),
-    ),
-    ),
-    ),
-    ),
-    const SizedBox(height: 16),
-    Align(
-    alignment: Alignment.centerRight,
-    child: Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-    IconButton(
-    icon: const Icon(Icons.arrow_back_ios, size: 16),
-    onPressed: _prevPage,
-    color: _currentPage > 1
-    ? const Color(0xFFFF4A49)
-        : Colors.grey,
-    ),
-    Text(
-    'Page $_currentPage of ${(_vendorRevenues.length / _vendorsPerPage).ceil()}',
-    style: const TextStyle(
-    fontSize: 15,
-    fontFamily: 'Poppins',
-    ),
-    ),
-    IconButton(
-    icon: const Icon(Icons.arrow_forward_ios, size: 16),
-    onPressed: _nextPage,
-    color: _currentPage * _vendorsPerPage <
-    _vendorRevenues.length
-    ? const Color(0xFFFF4A49)
-        : Colors.grey,
-    ),
-    ],
-    ),
-    ),
-    const SizedBox(height: 16),
-    ],
-    ),
     );
   }
 }
