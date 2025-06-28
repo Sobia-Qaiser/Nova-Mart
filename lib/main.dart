@@ -41,7 +41,7 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (context) => ProductProvider()),  // ✅ Corrected Placement
+        ChangeNotifierProvider(create: (context) => ProductProvider()),
       ],
       child: MyApp(),
     ),

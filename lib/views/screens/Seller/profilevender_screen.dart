@@ -12,6 +12,7 @@ import 'package:multi_vendor_ecommerce_app/views/screens/Seller/helpcentervendor
 import 'package:multi_vendor_ecommerce_app/views/screens/Seller/main_vendor_screen.dart';
 import 'package:multi_vendor_ecommerce_app/views/screens/Seller/storedetails.dart';
 
+import '../../../VendorSalesReport.dart';
 import '../../../controllers/theme_controller.dart';
 import 'package:http/http.dart' as http;
 
@@ -206,6 +207,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 context,
                 PageRouteBuilder(
                   pageBuilder: (context, animation, secondaryAnimation) => StoreDetails(),
+                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                    // Fade transition example
+                    return FadeTransition(
+                      opacity: animation,
+                      child: child,
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+          _buildSettingItem(
+            context,
+            icon: Icons.insert_chart_outlined,
+            title: 'Sales Report',
+            onTap: () {
+              Navigator.push(
+                context,
+                PageRouteBuilder(
+                  pageBuilder: (context, animation, secondaryAnimation) => OrderReportScreen(vendorId: _currentUser!.uid,),
                   transitionsBuilder: (context, animation, secondaryAnimation, child) {
                     // Fade transition example
                     return FadeTransition(

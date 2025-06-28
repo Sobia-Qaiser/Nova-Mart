@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:multi_vendor_ecommerce_app/views/screens/Admin/AdminSalesreport.dart';
 import 'package:multi_vendor_ecommerce_app/views/screens/Admin/admin_dashboard.dart';
 import 'package:multi_vendor_ecommerce_app/views/screens/Admin/sidebar_screen/Customersscreen.dart';
 import 'package:multi_vendor_ecommerce_app/views/screens/Admin/sidebar_screen/category_screen.dart';
@@ -100,6 +101,11 @@ class _DrawerContentState extends State<DrawerContent> {
             icon: Icons.shop,
             title: "Products",
             onTap: () => _navigateTo(ProductManagementPage()),
+          ),
+          _buildSpacedListTile(
+            icon: Icons.insert_chart,
+            title: "Sales Report",
+            onTap: () => _navigateTo(AdminsalesreportOrderReportScreen()),
           ),
           _buildSpacedListTile(
             icon: Icons.add,

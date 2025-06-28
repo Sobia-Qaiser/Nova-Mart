@@ -5,6 +5,8 @@ import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+import 'Sellersidevendorhistory.dart';
+
 class VendorPaymentsScreen extends StatefulWidget {
   const VendorPaymentsScreen({super.key});
 
@@ -165,6 +167,9 @@ class _VendorPaymentsScreenState extends State<VendorPaymentsScreen> {
           backgroundColor: Colors.white,
           colorText: Colors.black,
           icon: const Icon(Icons.info, color: Colors.orange, size: 30),
+          shouldIconPulse: false,
+          snackStyle: SnackStyle.FLOATING,
+          isDismissible: true,
         );
         return;
       }
@@ -178,6 +183,9 @@ class _VendorPaymentsScreenState extends State<VendorPaymentsScreen> {
           backgroundColor: Colors.white,
           colorText: Colors.black,
           icon: const Icon(Icons.info, color: Colors.orange, size: 30),
+          shouldIconPulse: false,
+          snackStyle: SnackStyle.FLOATING,
+          isDismissible: true,
         );
         return;
       }
@@ -247,6 +255,9 @@ class _VendorPaymentsScreenState extends State<VendorPaymentsScreen> {
           backgroundColor: Colors.white,
           colorText: Colors.black,
           icon: const Icon(Icons.check_circle, color: Colors.green, size: 30),
+          shouldIconPulse: false,
+          snackStyle: SnackStyle.FLOATING,
+          isDismissible: true,
         );
 
         // Refresh data
@@ -261,6 +272,9 @@ class _VendorPaymentsScreenState extends State<VendorPaymentsScreen> {
           backgroundColor: Colors.white,
           colorText: Colors.black,
           icon: const Icon(Icons.error, color: Colors.red, size: 30),
+          shouldIconPulse: false,
+          snackStyle: SnackStyle.FLOATING,
+          isDismissible: true,
         );
       }
     } catch (e) {
@@ -451,8 +465,16 @@ class _VendorPaymentsScreenState extends State<VendorPaymentsScreen> {
                                 DataCell(
                                   GestureDetector(
                                     onTap: () {
-                                      // Navigate to payment history screen
-                                      // Example: Navigator.push(...)
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => VendorPaymentHistoryScreen(
+                                            vendorId: vendor['vendorId'],
+                                            vendorName: vendor['vendorName'],
+                                            businessName: vendor['businessName'],
+                                          ),
+                                        ),
+                                      );
                                     },
                                     child: const Text(
                                       'View',
@@ -461,10 +483,12 @@ class _VendorPaymentsScreenState extends State<VendorPaymentsScreen> {
                                         fontFamily: 'Poppins',
                                         color: Colors.blue,
                                         fontWeight: FontWeight.w600,
+
                                       ),
                                     ),
                                   ),
                                 ),
+
 
                               ],
                             );
