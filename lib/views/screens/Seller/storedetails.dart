@@ -9,7 +9,7 @@ class StoreDetails extends StatefulWidget {
   @override
   _StoreDetailsState createState() => _StoreDetailsState();
 }
-//fghfhf
+
 class _StoreDetailsState extends State<StoreDetails> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final DatabaseReference _dbRef = FirebaseDatabase.instance.ref();
@@ -48,24 +48,36 @@ class _StoreDetailsState extends State<StoreDetails> {
     try {
       final User? user = _auth.currentUser;
       if (user != null) {
+        print("Current UID: ${user.uid}");
+
         _userRef = _dbRef.child('users').child(user.uid);
         final DatabaseEvent event = await _userRef.once();
         final DataSnapshot snapshot = event.snapshot;
 
         if (snapshot.value != null) {
+          final rawMap = Map<Object?, Object?>.from(snapshot.value as Map);
+          final formattedMap = rawMap.map((key, value) => MapEntry(key.toString(), value));
+
+          print('✅ Fetched vendor data: $formattedMap');
+
           setState(() {
-            _vendorData = Map<String, dynamic>.from(snapshot.value as Map);
+            _vendorData = formattedMap;
             _addressController.text = _vendorData['address'] ?? '';
             _phoneController.text = _vendorData['phoneNumber'] ?? '';
             _isLoading = false;
           });
+        } else {
+          print('⚠️ No data found for user');
         }
+      } else {
+        print('⚠️ No current user logged in');
       }
     } catch (e) {
-      print('Error fetching vendor data: $e');
+      print('❌ Error fetching vendor data: $e');
       setState(() => _isLoading = false);
     }
   }
+
 
   Future<void> _updateVendorData(String field, String value) async {
     try {
@@ -153,7 +165,6 @@ class _StoreDetailsState extends State<StoreDetails> {
             ),
           ),
         ),
-
       ),
     );
   }
@@ -259,6 +270,8 @@ class _StoreDetailsState extends State<StoreDetails> {
                 setState(() => _isEditingPhone = !_isEditingPhone);
               },
             ),
+            _buildInfoTile('Stripe ID',
+                _vendorData['stripeAccountId'] ?? '', Icons.credit_card_rounded),
             _buildInfoTile('Registered Email',
                 _vendorData['email'] ?? '', Icons.email_rounded),
             _buildInfoTile('Member Since',

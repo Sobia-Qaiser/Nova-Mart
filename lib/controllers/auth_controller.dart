@@ -15,6 +15,7 @@ class AuthController {
         String businessName = '',
         String phoneNumber = '',
         String address = '',
+        String stripeAccountId = '',
       }) async {
     String res = 'some error occurred';
     try {
@@ -45,6 +46,7 @@ class AuthController {
           'businessName': businessName,
           'phoneNumber': phoneNumber,
           'address': address,
+          'stripeAccountId': stripeAccountId,
           'status': 'pending',
         });
       }

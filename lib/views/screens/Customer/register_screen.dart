@@ -21,6 +21,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController _businessNameController = TextEditingController();
   final TextEditingController _phoneNumberController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
+  final TextEditingController _stripeAccountIdController = TextEditingController();
 
   bool isLoading = false;
 
@@ -101,24 +102,47 @@ class _SignUpScreenState extends State<SignUpScreen> {
     return null;
   }
 
-  String? _validatePhoneNumber(String value) {
+  String? _validatePhoneNumber(String? value) {
     if (selectedRole?.toLowerCase() == 'vendor') {
-      if (value.isEmpty) return 'Please enter phone number';
+      if (value == null || value.trim().isEmpty) {
+        return 'Please enter phone number';
+      }
 
-      RegExp phoneRegExp = RegExp(r'^(?:\+?92|92|0)(3[0-9]{9})$');
+      final trimmedValue = value.trim();
 
-      if (!phoneRegExp.hasMatch(value)) {
-        return 'Enter a valid number (e.g. 0321... or +9230...)';
+      // Accepts: +14155552671 (international) OR 03161234567 (Pakistan local)
+      final phoneRegExp = RegExp(r'^(\+?[1-9]\d{6,14}|03[0-9]{9})$');
+
+      if (!phoneRegExp.hasMatch(trimmedValue)) {
+        return 'Enter a valid phone number';
       }
     }
-    return null; // No error
+    return null;
   }
+
 
 
   String? _validateAddress(String value) {
     if (selectedRole == 'Vendor' && value.isEmpty) return 'Please enter address';
     return null;
   }
+
+  // Add this validation method
+  String? _validateStripeAccountId(String value) {
+    if (selectedRole == 'Vendor') {
+      if (value.isEmpty) {
+        return 'Please enter Stripe Account ID';
+      }
+
+
+      if (!value.startsWith('acct_')) {
+        return 'Invalid Stripe Account ID';
+      }
+
+      return null;
+    }
+  }
+
 
   void _submitForm() async {
     setState(() {
@@ -143,6 +167,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         businessName: selectedRole == 'Vendor' ? _businessNameController.text : '',
         phoneNumber: selectedRole == 'Vendor' ? _phoneNumberController.text : '',
         address: selectedRole == 'Vendor' ? _addressController.text : '',
+        stripeAccountId: selectedRole == 'Vendor' ? _stripeAccountIdController.text : '',
       );
 
 
@@ -406,6 +431,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 12),
                             ),
                             validator: (value) => _validateAddress(value!),
+                          ),
+                          const SizedBox(height: 15),
+                          TextFormField(
+                            controller: _stripeAccountIdController,
+                            decoration: InputDecoration(
+                              labelText: 'Stripe Account ID',
+                              labelStyle: const TextStyle(
+                                color: Color(0xFF333333),
+                                fontFamily: 'Poppins',
+                              ),
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.payment),
+                              contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                            ),
+                            validator: (value) => _validateStripeAccountId(value!),
                           ),
                         ],
                         const SizedBox(height: 15),
