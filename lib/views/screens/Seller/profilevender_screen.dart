@@ -16,6 +16,8 @@ import '../../../VendorSalesReport.dart';
 import '../../../controllers/theme_controller.dart';
 import 'package:http/http.dart' as http;
 
+import '../Admin/RecommendedReport.dart';
+
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -240,27 +242,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           _buildSettingItem(
             context,
-            icon: Icons.shopping_cart,
-            title: 'Product Recommendations',
+            icon: Icons.shopping_cart_outlined,
+            title: 'Recommended Packages',
             onTap: () async {
               // Show circular progress dialog
               showDialog(
                 context: context,
                 barrierDismissible: false,
                 builder: (context) => AlertDialog(
-                  content: Row(
-                    children: const [
-                      CircularProgressIndicator(),
-                      SizedBox(width: 20),
-                      Text("Generating recommendations..."),
-                    ],
+                  backgroundColor: Theme.of(context).cardColor,
+                  content: SizedBox(
+                    width: 200,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: const [
+                        CircularProgressIndicator(
+                          color: Color(0xFFFF4A49),
+                        ),
+                        SizedBox(height: 20),
+                        Text(
+                          "Generating Recommendations...",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );
 
+
               try {
                 // Replace with your Flask local IP and port
-                final response = await http.get(Uri.parse('http://192.168.1.24:5000/generate-recommendations'));
+                final response = await http.get(Uri.parse('http://192.168.0.106:5000/generate-recommendations'));
 
                 Navigator.of(context).pop(); // Close the loading dialog
 
@@ -269,8 +287,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Navigator.push(
                     context,
                     PageRouteBuilder(
-                      pageBuilder: (context, animation, secondaryAnimation) => StoreDetails(),
+                      pageBuilder: (context, animation, secondaryAnimation) => RecommendationReportScreen(vendorId: _currentUser!.uid,),
                       transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                        // Fade transition example
                         return FadeTransition(
                           opacity: animation,
                           child: child,
