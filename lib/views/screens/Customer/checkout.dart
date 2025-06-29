@@ -26,6 +26,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   final TextEditingController _cityController = TextEditingController();
   final TextEditingController _zipController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
+  final DatabaseReference _usersRef = FirebaseDatabase.instance.ref('users');
+
+
   bool _isLoading = false;
 
 
@@ -51,6 +54,21 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final price = _parsePrice(item['price']);
     return (discount > 0 && discount < price) ? discount : price;
   }
+
+
+  void _fetchUserDetails() async {
+    if (_currentUser == null) return;
+
+    final snapshot = await _usersRef.child(_currentUser!.uid).get();
+
+    if (snapshot.exists) {
+      final data = snapshot.value as Map<dynamic, dynamic>;
+
+      _fullNameController.text = data['fullName'] ?? '';
+      _emailController.text = data['email'] ?? '';
+    }
+  }
+
 
   Widget _buildCartItem(dynamic item, bool isDarkMode) {
     final variantText = _buildVariantInfo(item);
@@ -211,15 +229,25 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 Map<String, dynamic> product = Map<String, dynamic>.from(currentData as Map);
                 final productType = product['productType']?.toString() ?? 'Simple Product';
 
-                if (productType == 'Simple Product') {
+                /*if (productType == 'Simple Product') {
                   int currentQty = (product['quantity'] is String)
                       ? int.tryParse(product['quantity']) ?? 0
                       : (product['quantity'] as int? ?? 0);
 
                   product['quantity'] = max(currentQty - orderedQty, 0);
                   print('✅ Updated simple product stock: $currentQty → ${product['quantity']}');
+                }*/
+
+                if (productType == 'Simple Product') {
+                  int currentQty = (product['quantity'] is String)
+                      ? int.tryParse(product['quantity']) ?? 0
+                      : (product['quantity'] as int? ?? 0);
+
+                  product['quantity'] = max(currentQty - orderedQty, 0);
+                  print('✅ Simple product stock updated: $currentQty → ${product['quantity']}');
                 }
-                else if (productType == 'Product Variants') {
+
+                /*else if (productType == 'Product Variants') {
                   List<dynamic> variations = List.from(product['variations'] ?? []);
                   bool variationFound = false;
 
@@ -262,7 +290,52 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   }
 
                   product['variations'] = variations;
+                }*/
+
+                else if (productType == 'Product Variants') {
+                  List<dynamic> variations = List.from(product['variations'] ?? []);
+                  bool variationFound = false;
+
+                  final orderSize = entry.value['size']?.toString()?.toLowerCase();
+                  final orderColor = entry.value['color']?.toString()?.toLowerCase();
+
+                  for (int i = 0; i < variations.length; i++) {
+                    final variation = Map<String, dynamic>.from(variations[i]);
+
+                    final varColor = variation['color']?.toString()?.toLowerCase();
+                    final varSize = variation['size']?.toString()?.toLowerCase();
+
+                    bool colorMatch = (orderColor != null && orderColor.isNotEmpty)
+                        ? varColor == orderColor
+                        : true;
+
+                    bool sizeMatch = (orderSize != null && orderSize.isNotEmpty)
+                        ? varSize == orderSize
+                        : true;
+
+                    if (colorMatch && sizeMatch) {
+                      int currentVarQty = (variation['quantity'] is String)
+                          ? int.tryParse(variation['quantity']) ?? 0
+                          : (variation['quantity'] as int? ?? 0);
+
+                      final newQty = max(currentVarQty - orderedQty, 0);
+                      print("✅ Variant matched [Color: $varColor, Size: $varSize], Qty: $currentVarQty → $newQty");
+
+                      variation['quantity'] = newQty;
+                      variations[i] = variation;
+                      variationFound = true;
+                      break;
+                    }
+                  }
+
+                  if (!variationFound) {
+                    print("❌ No matching variant found for Color: $orderColor, Size: $orderSize");
+                    return Transaction.abort();
+                  }
+
+                  product['variations'] = variations;
                 }
+
                 else {
                   return Transaction.abort();
                 }
@@ -312,6 +385,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   void initState() {
     super.initState();
     _currentUser = FirebaseAuth.instance.currentUser;
+    _fetchUserDetails();
   }
 
   @override

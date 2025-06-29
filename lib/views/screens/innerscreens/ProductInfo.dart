@@ -131,10 +131,11 @@ class _ProductInfoState extends State<ProductInfo> {
       'productType': productType,
       'size': selectedSize?.toString().toLowerCase(), // Lowercase
       'color': selectedColor?.toString().toLowerCase(), // Lowercase
-      'imageUrl': imageUrls.isNotEmpty ? imageUrls[0] : '',
+      'imageUrl': imageUrls.isNotEmpty ? imageUrls[selectedImageIndex] : '',
       'addedAt': ServerValue.timestamp,
       'shippingCharges': shippingCharges,
       'taxAmount': taxAmount,
+      'stockStatus': stockStatus,
     };
 
     try {
@@ -677,7 +678,7 @@ class _ProductInfoState extends State<ProductInfo> {
       ),
     );
   }
-  Widget _buildPriceWithQuantity(Color textColor) {
+ /* Widget _buildPriceWithQuantity(Color textColor) {
     return Padding(
       padding: const EdgeInsets.only(left: 12, right: 12, top: 6, bottom: 0),
       child: Column(
@@ -744,6 +745,98 @@ class _ProductInfoState extends State<ProductInfo> {
                 fontFamily: 'Poppins',
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }*/
+
+  Widget _buildPriceWithQuantity(Color textColor) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 12, right: 12, top: 6, bottom: 0),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Price Display (existing code)
+              Row(
+                children: [
+                  if (discountPrice.isNotEmpty)
+                    Text(
+                      '\$$discountPrice',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1976D2),
+                        fontFamily: 'Poppins',
+                      ),
+                    ),
+                  if (discountPrice.isNotEmpty) const SizedBox(width: 6),
+                  Text(
+                    '\$$price',
+                    style: TextStyle(
+                      fontSize: discountPrice.isNotEmpty ? 12 : 16,
+                      color: discountPrice.isNotEmpty
+                          ? textColor.withOpacity(0.5)
+                          : const Color(0xFF1976D2),
+                      decoration: discountPrice.isNotEmpty
+                          ? TextDecoration.lineThrough
+                          : null,
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              // Updated QuantitySelector with stockStatus parameter
+              QuantitySelector(
+                quantity: selectedQuantity,
+                maxQuantity: currentStock,
+                stockStatus: stockStatus, // Add this line
+                onIncrease: () {
+                  if (selectedQuantity < currentStock) {
+                    setState(() => selectedQuantity++);
+                  }
+                },
+                onDecrease: () {
+                  if (selectedQuantity > 1) {
+                    setState(() => selectedQuantity--);
+                  }
+                },
+              ),
+            ],
+          ),
+          // Stock Status (existing code)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Stock status on the left
+              Text(
+                stockStatus,
+                style: TextStyle(
+                  color: stockStatusColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  fontFamily: 'Poppins',
+                ),
+              ),
+              // "Buy only one item" message on the right when stock is limited
+              if (stockStatus == "Limited Stock")
+                Padding(
+                  padding: const EdgeInsets.only(top: 2.0), // Add padding here
+                  child: Text(
+                    "Buy only one item",
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'Poppins',
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ],
       ),

@@ -5,19 +5,27 @@ class QuantitySelector extends StatelessWidget {
     super.key,
     required this.quantity,
     required this.maxQuantity,
+    required this.stockStatus, // ✅ Stock status added
     required this.onIncrease,
     required this.onDecrease,
   });
 
   final int quantity;
   final int maxQuantity;
+  final String stockStatus; // ✅ Added here
   final VoidCallback onIncrease;
   final VoidCallback onDecrease;
 
   @override
   Widget build(BuildContext context) {
-    final bool canDecrease = quantity > 1;
-    final bool canIncrease = quantity < maxQuantity;
+    // ✅ Ensure quantity never goes below 1
+    final int safeQuantity = quantity < 1 ? 1 : quantity;
+
+    final bool canDecrease = safeQuantity > 1;
+
+    // ✅ Modify canIncrease logic to consider stock status
+    final bool canIncrease =
+        safeQuantity < maxQuantity && stockStatus != "Limited Stock";
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -32,7 +40,7 @@ class QuantitySelector extends StatelessWidget {
         const SizedBox(width: 10),
         // Quantity Display
         Text(
-          '$quantity',
+          '$safeQuantity',
           style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
@@ -58,7 +66,7 @@ class QuantitySelector extends StatelessWidget {
     required bool isEnabled,
   }) {
     final Color backgroundColor = isMinus
-        ? (isEnabled ? const Color(0xFFF1F1F1) : const Color(0xFFF1F1F1))
+        ? const Color(0xFFF1F1F1)
         : (isEnabled ? const Color(0xFFFF4A49) : const Color(0xFFF1F1F1));
 
     final Color iconColor = isMinus
