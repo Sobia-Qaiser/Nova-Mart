@@ -147,6 +147,7 @@ class _GeneralScreenState extends State<GeneralScreen> {
   final double _borderRadius = 12.0;
   final double _inputPadding = 16.0;
 
+
   @override
   void initState() {
     super.initState();
@@ -165,6 +166,7 @@ class _GeneralScreenState extends State<GeneralScreen> {
     _varQtyController.dispose();
     super.dispose();
   }
+
 
   Future<void> _initializeData() async {
     await _provider.loadVendorInfo();
@@ -248,6 +250,13 @@ class _GeneralScreenState extends State<GeneralScreen> {
           .ref('products/$productId')
           .set(productData);
 
+      setState(() {
+        _selectedCategory = null;
+        _selectedProductType = null;
+        _descriptionController.clear();
+      });
+      _provider.clearForm();
+
 
       _clearAllFormData();
       // Clear form and refresh products
@@ -288,8 +297,8 @@ class _GeneralScreenState extends State<GeneralScreen> {
   }
 
 
-  void _clearAllFormData() {
-    // Clear provider data
+  void _clearAllFormData() async {
+    // Clear provider first
     _provider.clearForm();
 
     // Clear controllers
@@ -300,24 +309,28 @@ class _GeneralScreenState extends State<GeneralScreen> {
     _varColorController.clear();
     _varQtyController.clear();
 
-    // Reset dropdown selections
-    setState(() {
-      _selectedCategory = null;
-      _selectedProductType = null;
-      // _provider.productType = null; // Also clear the product type in provider
-    });
+    // Reset dropdowns
+    _selectedCategory = null;
+    _selectedProductType = null;
 
-    // Reset form states
-    if (_formKey.currentState != null) {
-      _formKey.currentState!.reset();
-    }
-    if (_variationFormKey.currentState != null) {
-      _variationFormKey.currentState!.reset();
-    }
-    if (_productTypeFormKey.currentState != null) {
-      _productTypeFormKey.currentState!.reset();
-    }
+    // Reset form keys
+    _formKey.currentState?.reset();
+    _variationFormKey.currentState?.reset();
+    _productTypeFormKey.currentState?.reset();
+
+    // Now wait a little
+    await Future.delayed(Duration(milliseconds: 20));
+
+    // Force UI rebuild after frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      setState(() {
+        _descriptionController.text = '';
+        _selectedCategory = null;
+        _selectedProductType = null;
+      });
+    });
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -1004,6 +1017,7 @@ class _GeneralScreenState extends State<GeneralScreen> {
 
   Widget _buildProductTypeDropdown() {
     return DropdownButtonFormField<String>(
+
       value: _selectedProductType,
       decoration: InputDecoration(
         labelText: "Product Type",
@@ -1538,7 +1552,10 @@ class _UploadedProductsScreenState extends State<UploadedProductsScreen> {
                 );
               },
             ),
-          );
+          ).then((_) {
+            // This will be called when coming back from EditProductScreen
+            provider.clearForm();
+          });
         }
 
         break;

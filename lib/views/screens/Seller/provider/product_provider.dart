@@ -78,6 +78,11 @@ class ProductProvider with ChangeNotifier {
     _variations.clear();
     _images.clear();
     _productType = null;
+
+    productData['category'] = null;
+    productData['description'] = null;
+    productData['productType'] = null;
+
     notifyListeners();
   }
 
@@ -222,6 +227,7 @@ class ProductProvider with ChangeNotifier {
     double? shippingCharges,
     double? taxPercent,
     List<String>? images,
+    String? productType,
   }) {
     _productName = productName ?? _productName;
     _category = category ?? _category;
@@ -232,6 +238,7 @@ class ProductProvider with ChangeNotifier {
     _quantity = quantity ?? _quantity;
     _shippingCharges = shippingCharges ?? _shippingCharges;
     _images = images ?? _images;
+    _productType = productType ?? _productType;
     _dateTime = DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
 
     if (taxPercent != null) {

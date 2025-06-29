@@ -7,7 +7,6 @@ import 'package:multi_vendor_ecommerce_app/views/screens/Seller/provider/product
 import 'package:provider/provider.dart';
 import 'dart:io';
 
-
 class EditProductScreen extends StatefulWidget {
   final Map<String, dynamic> product;
 
@@ -21,8 +20,6 @@ class _EditProductScreenState extends State<EditProductScreen> {
   late final ProductProvider _provider;
   String? _selectedCategory;
   final TextEditingController _descriptionController = TextEditingController();
-  final TextEditingController _sizeController = TextEditingController();
-  final TextEditingController _colorController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   final _sizeFormKey = GlobalKey<FormState>();
   final _colorFormKey = GlobalKey<FormState>();
@@ -33,9 +30,9 @@ class _EditProductScreenState extends State<EditProductScreen> {
   final _discountController = TextEditingController();
   final _taxController = TextEditingController();
   final _quantityController = TextEditingController();
-  final TextEditingController _varSizeController = TextEditingController();
-  final TextEditingController _varColorController = TextEditingController();
-  final TextEditingController _varQtyController = TextEditingController();
+  final _varSizeController = TextEditingController();
+  final _varColorController = TextEditingController();
+  final _varQtyController = TextEditingController();
   final _variationFormKey = GlobalKey<FormState>();
   String? _selectedSize;
   bool _isLoading = false;
@@ -54,14 +51,9 @@ class _EditProductScreenState extends State<EditProductScreen> {
   void initState() {
     super.initState();
     _provider = context.read<ProductProvider>();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _provider.clearForm();
-      _initializeFormData();
-      _provider.loadCategories();
-    });
+    _initializeFormData();
+    _provider.loadCategories();
   }
-
 
   @override
   void dispose() {
@@ -72,17 +64,11 @@ class _EditProductScreenState extends State<EditProductScreen> {
     _taxController.dispose();
     _quantityController.dispose();
     _descriptionController.dispose();
-    _sizeController.dispose();
-    _colorController.dispose();
     _varSizeController.dispose();
     _varColorController.dispose();
     _varQtyController.dispose();
     super.dispose();
   }
-
-  // In your EditProductScreen, modify the initialization to handle type conversion:
-
-  // In your _initializeFormData method, modify it to properly initialize all fields:
 
   void _initializeFormData() {
     // Clear any existing data first
@@ -91,14 +77,14 @@ class _EditProductScreenState extends State<EditProductScreen> {
     // Safely convert the product data to Map<String, dynamic>
     final productData = Map<String, dynamic>.from(widget.product);
 
-    // Set dropdown values FIRST
-    _selectedCategory = productData['category']?.toString();
+    // Set product type first as it affects other fields
     _selectedProductType = productData['productType']?.toString() ?? 'Simple Product';
+    _provider.handleProductTypeChange(_selectedProductType!);
 
-    // Inform provider about product type change (this clears variations or quantity)
-    _provider.handleProductTypeChange(_selectedProductType);
+    // Set dropdown values
+    _selectedCategory = productData['category']?.toString();
 
-    // Now initialize the rest of the form data
+    // Initialize all fields in the provider
     _provider.getFormData(
       productName: productData['productName']?.toString(),
       category: _selectedCategory,
@@ -109,21 +95,41 @@ class _EditProductScreenState extends State<EditProductScreen> {
       shippingCharges: _convertToDouble(productData['shippingCharges']),
       taxPercent: _convertToDouble(productData['taxPercent']),
       images: List<String>.from(productData['imageUrls'] ?? []),
+      productType: _selectedProductType,
     );
 
     // Initialize text controllers
     _productNameController.text = productData['productName']?.toString() ?? '';
     _priceController.text = productData['price']?.toString() ?? '';
     _shippingController.text = productData['shippingCharges']?.toString() ?? '';
-    _discountController.text = productData['discountPrice']?.toString() ?? '';
     _taxController.text = productData['taxPercent']?.toString() ?? '';
-    _quantityController.text = productData['quantity']?.toString() ?? '';
     _descriptionController.text = productData['description']?.toString() ?? '';
 
-    // Initialize variations if it's a variant product
-    if (productData['variations'] != null && _selectedProductType == 'Product Variants') {
+    //  Handle discount price conditionally
+    final discountPrice = productData['discountPrice'];
+    if (discountPrice != null) {
+      _discountController.text = discountPrice.toString();
+    } else {
+      _discountController.clear();
+    }
+
+    // Handle tax initialization
+    final taxPercent = productData['taxPercent'];
+    if (taxPercent != null) {
+      _taxController.text = taxPercent.toString();
+    } else {
+      _taxController.clear();
+    }
+
+    // Handle quantity based on product type
+    if (_selectedProductType == 'Simple Product') {
+      _quantityController.text = productData['quantity']?.toString() ?? '';
+    }
+
+    // Initialize variations if they exist
+    if (_selectedProductType == 'Product Variants' && productData['variations'] != null) {
       final variations = List<Map<String, dynamic>>.from(
-        productData['variations'].map((v) => Map<String, dynamic>.from(v)),
+        (productData['variations'] as List).map((v) => Map<String, dynamic>.from(v)),
       );
       for (var variation in variations) {
         _provider.addVariation(
@@ -133,14 +139,9 @@ class _EditProductScreenState extends State<EditProductScreen> {
         );
       }
     }
-
-    // Force UI update
-    setState(() {});
   }
 
 
-
-// Helper methods for type conversion
   double? _convertToDouble(dynamic value) {
     if (value == null) return null;
     if (value is double) return value;
@@ -207,30 +208,41 @@ class _EditProductScreenState extends State<EditProductScreen> {
         imageUrls.add(downloadUrl);
       }
 
+      // Calculate tax amount if tax percent is provided
+      double? taxAmount;
+      if (_provider.productData['taxPercent'] != null && _provider.productData['price'] != null) {
+        taxAmount = (_provider.productData['price'] * _provider.productData['taxPercent']) / 100;
+      }
+
       // Prepare updated product data
       final productData = {
         'productName': _provider.productData['productName'],
         'category': _provider.productData['category'],
         'description': _provider.productData['description'],
         'price': _provider.productData['price'],
-        'discountPrice': _provider.productData['discountPrice'],
+        'discountPrice': _discountController.text.isEmpty
+            ? null
+            : double.tryParse(_discountController.text),
         'shippingCharges': _provider.productData['shippingCharges'],
-        'taxPercent': _provider.productData['taxPercent'],
-        'taxAmount': _provider.productData['taxAmount'],
+        'taxPercent': _taxController.text.isEmpty
+            ? null
+            : double.tryParse(_taxController.text),
+        'taxAmount': taxAmount,
         'imageUrls': imageUrls,
         'productType': _provider.productType,
         'dateTime': DateTime.now().toString(),
-
-        if (_provider.productType == 'Simple Product')
-          'quantity': _provider.productData['quantity'],
-
-        if (_provider.productType == 'Product Variants')
-          'variations': _provider.variations.map((v) => {
-            if (v['size']?.toString().isNotEmpty ?? false) 'size': v['size'],
-            if (v['color']?.toString().isNotEmpty ?? false) 'color': v['color'],
-            'quantity': v['quantity']
-          }).toList(),
       };
+
+      // Add quantity or variations based on product type
+      if (_provider.productType == 'Simple Product') {
+        productData['quantity'] = _provider.productData['quantity'];
+      } else {
+        productData['variations'] = _provider.variations.map((v) => {
+          if (v['size']?.toString().isNotEmpty ?? false) 'size': v['size'],
+          if (v['color']?.toString().isNotEmpty ?? false) 'color': v['color'],
+          'quantity': v['quantity']
+        }).toList();
+      }
 
       // Update in Firebase Realtime Database
       await FirebaseDatabase.instance
@@ -298,7 +310,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
     }
   }
 
-  // Validation methods (same as in UploadScreen)
+  // Validation methods
   String? _validateProductName(String? value) {
     if (value == null || value.isEmpty) return 'Product name is required';
     if (RegExp(r'^[0-9]+$').hasMatch(value)) return 'Cannot be only digits';
@@ -326,13 +338,20 @@ class _EditProductScreenState extends State<EditProductScreen> {
   }
 
   String? _validateDiscountPrice(String? value) {
-    if (value!.isNotEmpty) {
-      final discount = double.tryParse(value);
-      final price = _provider.productData['price'] ?? double.tryParse(value);
-      if (discount == null || discount < 0) return 'Invalid discount';
-      if (price != null && discount >= price) return 'lower than price';
-      if (int.tryParse(value) == null) return 'Enter valid price';
+    if (value == null || value.isEmpty) {
+      _provider.getFormData(discountPrice: null);
+      return null;
     }
+
+    final discount = double.tryParse(value);
+    if (discount == null) return 'Enter valid number';
+    if (discount < 0) return 'Cannot be negative';
+
+    final price = _provider.productData['price'] as double?;
+    if (price != null && discount >= price) {
+      return 'Must be less than price';
+    }
+
     return null;
   }
 
@@ -370,7 +389,6 @@ class _EditProductScreenState extends State<EditProductScreen> {
     return value == null ? 'Please select product type' : null;
   }
 
-  // Helper widgets (same as in UploadScreen)
   Widget _buildSectionHeader(String title) {
     return Padding(
       padding: EdgeInsets.only(bottom: _inputPadding / 2),
@@ -383,6 +401,12 @@ class _EditProductScreenState extends State<EditProductScreen> {
         ),
       ),
     );
+  }
+
+  void _clearTax() {
+    _taxController.clear();
+    _provider.getFormData(taxPercent: null);
+    setState(() {}); // Force UI update
   }
 
   Widget _buildTextField(
@@ -433,7 +457,6 @@ class _EditProductScreenState extends State<EditProductScreen> {
       keyboardType: keyboardType,
     );
   }
-
 
   Widget _buildCategoryDropdown() {
     return Consumer<ProductProvider>(
@@ -556,7 +579,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
       onChanged: (value) {
         setState(() {
           _selectedProductType = value;
-          _provider.handleProductTypeChange(value);
+          _provider.handleProductTypeChange(value!);
           // Clear quantity when switching to variants
           if (value == 'Product Variants') {
             _quantityController.clear();
@@ -565,7 +588,6 @@ class _EditProductScreenState extends State<EditProductScreen> {
       },
     );
   }
-
 
   Widget _buildSaveButton() {
     return Center(
@@ -597,10 +619,10 @@ class _EditProductScreenState extends State<EditProductScreen> {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
     final images = context.watch<ProductProvider>().images;
+    final productType = context.watch<ProductProvider>().productType;
 
     return Scaffold(
       appBar: AppBar(
@@ -857,21 +879,19 @@ class _EditProductScreenState extends State<EditProductScreen> {
               _buildCategoryDropdown(),
               SizedBox(height: _inputPadding),
               _buildProductTypeDropdown(),
-              Visibility(
-                visible: _provider.productType != 'Product Variants',
-                child: Column(
-                  children: [
-                    SizedBox(height: _inputPadding),
-                    _buildTextField(
-                      "Stock",
-                          (value) => _provider.getFormData(quantity: int.tryParse(value)),
-                      controller: _quantityController,
-                      keyboardType: TextInputType.number,
-                      validator: _validateQuantity,
-                    ),
-                  ],
+
+              // Show quantity field only for simple products
+              if (productType == 'Simple Product') ...[
+                SizedBox(height: _inputPadding),
+                _buildTextField(
+                  "Stock",
+                      (value) => _provider.getFormData(quantity: int.tryParse(value)),
+                  controller: _quantityController,
+                  keyboardType: TextInputType.number,
+                  validator: _validateQuantity,
                 ),
-              ),
+              ],
+
               SizedBox(height: _inputPadding),
               _buildDescriptionField(),
 
@@ -921,12 +941,11 @@ class _EditProductScreenState extends State<EditProductScreen> {
                     child: _buildTextField(
                       "Shipping Price",
                           (value) => _provider.getFormData(shippingCharges: double.tryParse(value)),
-                      controller:_shippingController,
+                      controller: _shippingController,
                       keyboardType: TextInputType.number,
                       validator: _validateShipping,
                     ),
                   ),
-
                 ],
               ),
 
@@ -935,174 +954,265 @@ class _EditProductScreenState extends State<EditProductScreen> {
               Row(
                 children: [
                   Expanded(
-                    child: _buildTextField(
-                      "Discount Price",
-                          (value) => _provider.getFormData(discountPrice: double.tryParse(value)),
+                    child: TextFormField(
                       controller: _discountController,
+                      decoration: InputDecoration(
+                        labelText: 'Discount Price',
+                        labelStyle: TextStyle(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.grey[300]
+                              : _secondaryColor.withOpacity(0.7),
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(_borderRadius),
+                          borderSide: BorderSide(color: _borderColor),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(_borderRadius),
+                          borderSide: BorderSide(color: _borderColor),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(_borderRadius),
+                          borderSide: BorderSide(color: _primaryColor),
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: _inputPadding,
+                          vertical: _inputPadding * 0.75,
+                        ),
+                        suffixIcon: _discountController.text.isNotEmpty
+                            ? IconButton(
+                          icon: Icon(Icons.clear, size: 18),
+                          onPressed: () {
+                            _discountController.clear();
+                            _provider.getFormData(discountPrice: null);
+                            setState(() {});
+                          },
+                        )
+                            : null,
+                      ),
                       keyboardType: TextInputType.number,
-                      validator: _validateDiscountPrice,
-
+                      onChanged: (value) {
+                        if (value.isEmpty) {
+                          _provider.getFormData(discountPrice: null);
+                        } else {
+                          _provider.getFormData(discountPrice: double.tryParse(value));
+                        }
+                        setState(() {});
+                      },
+                      validator: (value) {
+                        if (value?.isNotEmpty ?? false) {
+                          final discount = double.tryParse(value!);
+                          if (discount == null) return 'Enter valid number';
+                          if (discount < 0) return 'Cannot be negative';
+                          final price = _provider.productData['price'] as double?;
+                          if (price != null && discount >= price) {
+                            return 'Must be less than price';
+                          }
+                        }
+                        return null;
+                      },
                     ),
                   ),
-
-
                   SizedBox(width: _inputPadding),
                   Expanded(
-                    child: _buildTextField(
-                      "Tax %",
-                          (value) => _provider.getFormData(taxPercent: double.tryParse(value)),
-                      controller:_taxController,
+                    child: TextFormField(
+                      controller: _taxController,
+                      decoration: InputDecoration(
+                        labelText: 'Tax %',
+                        labelStyle: TextStyle(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.grey[300]
+                              : _secondaryColor.withOpacity(0.7),
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(_borderRadius),
+                          borderSide: BorderSide(color: _borderColor),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(_borderRadius),
+                          borderSide: BorderSide(color: _borderColor),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(_borderRadius),
+                          borderSide: BorderSide(color: _primaryColor),
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: _inputPadding,
+                          vertical: _inputPadding * 0.75,
+                        ),
+                        suffixIcon: _taxController.text.isNotEmpty
+                            ? IconButton(
+                          icon: Icon(Icons.clear, size: 18),
+                          onPressed: () {
+                            _taxController.clear();
+                            _provider.getFormData(taxPercent: null);
+                            setState(() {});
+                          },
+                        )
+                            : null,
+                      ),
                       keyboardType: TextInputType.number,
-                      validator: _validateTax,
+                      onChanged: (value) {
+                        if (value.isEmpty) {
+                          _provider.getFormData(taxPercent: null);
+                        } else {
+                          _provider.getFormData(taxPercent: double.tryParse(value));
+                        }
+                      },
+                      validator: (value) {
+                        if (value?.isNotEmpty ?? false) {
+                          final tax = double.tryParse(value!);
+                          if (tax == null) return 'Enter valid number';
+                          if (tax < 0) return 'Cannot be negative';
+                          if (tax > 100) return 'Cannot exceed 100%';
+                        }
+                        return null;
+                      },
                     ),
                   ),
-
-
                 ],
               ),
 
-              // Variations Section
-              Visibility(
-                visible: _provider.productType == 'Product Variants',
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(height: _inputPadding * 1.5),
-                    _buildSectionHeader('Product Variations'),
-                    Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.all(_inputPadding),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? Colors.grey[800]
-                            : Colors.grey[50],
-                        border: Border.all(
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? Colors.grey[600]!
-                              : Colors.grey[300]!,
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Form(
-                            key: _variationFormKey,
-                            child: Column(
+
+
+              // Variations Section - Only show for variant products
+              if (productType == 'Product Variants') ...[
+                SizedBox(height: _inputPadding * 1.5),
+                _buildSectionHeader('Product Variations'),
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(_inputPadding),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.grey[800]
+                        : Colors.grey[50],
+                    border: Border.all(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.grey[600]!
+                          : Colors.grey[300]!,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Form(
+                        key: _variationFormKey,
+                        child: Column(
+                          children: [
+                            Row(
                               children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: _buildTextField(
-                                        "Size",
-                                            (value) {},
-                                        controller: _varSizeController,
-                                        validator: _validateSize,
-                                        contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                                      ),
-                                    ),
-                                    SizedBox(width: _inputPadding),
-                                    Expanded(
-                                      child: _buildTextField(
-                                        "Color",
-                                            (value) {},
-                                        controller: _varColorController,
-                                        validator: _validateColor,
-                                        contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                                      ),
-                                    ),
-                                    SizedBox(width: _inputPadding),
-                                    Expanded(
-                                      child: _buildTextField(
-                                        "Stock",
-                                            (value) {},
-                                        controller: _varQtyController,
-                                        keyboardType: TextInputType.number,
-                                        validator: (value) {
-                                          if (value == null || value.isEmpty) return 'Required';
-                                          final quantity = int.tryParse(value);
-                                          if (quantity == null) return 'Invalid';
-                                          if (quantity <= 0) return 'Must be > 0';
-                                          if (value.length > 4) return 'Max 4 digits';
-                                          return null;
-                                        },
-                                        contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                                      ),
-                                    ),
-                                  ],
+                                Expanded(
+                                  child: _buildTextField(
+                                    "Size",
+                                        (value) {},
+                                    controller: _varSizeController,
+                                    validator: _validateSize,
+                                    contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                                  ),
                                 ),
-                                SizedBox(height: _inputPadding),
-                                GestureDetector(
-                                  onTap: _addVariation,
-                                  child: Container(
-                                    padding: EdgeInsets.symmetric(vertical: 6),
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.end,
-                                      children: [
-                                        Icon(Icons.add, size: 20, color: _primaryColor),
-                                        SizedBox(width: 4),
-                                        Text(
-                                          "Add Variation",
-                                          style: TextStyle(
-                                            color: _primaryColor,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                                SizedBox(width: _inputPadding),
+                                Expanded(
+                                  child: _buildTextField(
+                                    "Color",
+                                        (value) {},
+                                    controller: _varColorController,
+                                    validator: _validateColor,
+                                    contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                                  ),
+                                ),
+                                SizedBox(width: _inputPadding),
+                                Expanded(
+                                  child: _buildTextField(
+                                    "Stock",
+                                        (value) {},
+                                    controller: _varQtyController,
+                                    keyboardType: TextInputType.number,
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) return 'Required';
+                                      final quantity = int.tryParse(value);
+                                      if (quantity == null) return 'Invalid';
+                                      if (quantity <= 0) return 'Must be > 0';
+                                      if (value.length > 4) return 'Max 4 digits';
+                                      return null;
+                                    },
+                                    contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                                   ),
                                 ),
                               ],
                             ),
-                          ),
-
-                          if (_provider.variations.isNotEmpty)
-                            Padding(
-                              padding: EdgeInsets.only(top: _inputPadding),
-                              child: Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: _provider.variations.asMap().entries.map((entry) {
-                                  final index = entry.key;
-                                  final variation = entry.value;
-
-                                  List<String> parts = [];
-                                  if (variation['size'] != null && variation['size'].toString().trim().isNotEmpty) {
-                                    parts.add('Size: ${variation['size']}');
-                                  }
-                                  if (variation['color'] != null && variation['color'].toString().trim().isNotEmpty) {
-                                    parts.add('Color: ${variation['color']}');
-                                  }
-                                  if (variation['quantity'] != null && variation['quantity'].toString().trim().isNotEmpty) {
-                                    parts.add('Quantity: ${variation['quantity']}');
-                                  }
-
-                                  return Chip(
-                                    label: Text(
-                                      parts.join(' | '),
-                                      style: TextStyle(fontSize: 12),
+                            SizedBox(height: _inputPadding),
+                            GestureDetector(
+                              onTap: _addVariation,
+                              child: Container(
+                                padding: EdgeInsets.symmetric(vertical: 6),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    Icon(Icons.add, size: 20, color: _primaryColor),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      "Add Variation",
+                                      style: TextStyle(
+                                        color: _primaryColor,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
                                     ),
-                                    deleteIcon: Icon(Icons.close, size: 16),
-                                    onDeleted: () => _provider.removeVariation(index),
-                                    backgroundColor: Theme.of(context).brightness == Brightness.dark
-                                        ? Colors.grey[700]
-                                        : _chipBackground,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(6),
-                                      side: BorderSide(color: _borderColor.withOpacity(0.3)),
-                                    ),
-                                  );
-                                }).toList(),
+                                  ],
+                                ),
                               ),
-                            )
-                        ],
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+
+                      if (_provider.variations.isNotEmpty)
+                        Padding(
+                          padding: EdgeInsets.only(top: _inputPadding),
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: _provider.variations.asMap().entries.map((entry) {
+                              final index = entry.key;
+                              final variation = entry.value;
+
+                              List<String> parts = [];
+                              if (variation['size'] != null && variation['size'].toString().trim().isNotEmpty) {
+                                parts.add('Size: ${variation['size']}');
+                              }
+                              if (variation['color'] != null && variation['color'].toString().trim().isNotEmpty) {
+                                parts.add('Color: ${variation['color']}');
+                              }
+                              if (variation['quantity'] != null && variation['quantity'].toString().trim().isNotEmpty) {
+                                parts.add('Qty: ${variation['quantity']}');
+                              }
+
+                              return Chip(
+                                label: Text(
+                                  parts.join(' | '),
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                                deleteIcon: Icon(Icons.close, size: 16),
+                                onDeleted: () => _provider.removeVariation(index),
+                                backgroundColor: Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.grey[700]
+                                    : _chipBackground,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(6),
+                                  side: BorderSide(color: _borderColor.withOpacity(0.3)),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        )
+                    ],
+                  ),
                 ),
-              ),
-              SizedBox(height: 12),
+              ],
+
+              SizedBox(height: 24),
               Center(child: _buildSaveButton()),
+              SizedBox(height: 24),
             ],
           ),
         ),
