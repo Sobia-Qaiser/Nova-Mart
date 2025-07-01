@@ -416,7 +416,7 @@ class _EarningScreenState extends State<EarningScreen> {
     }
   }
 
-  Future<void> _fetchChartData() async {
+  /*Future<void> _fetchChartData() async {
     final now = DateTime.now();
     final oneWeekAgo = now.subtract(const Duration(days: 7));
     final oneMonthAgo = now.subtract(const Duration(days: 30));
@@ -498,7 +498,94 @@ class _EarningScreenState extends State<EarningScreen> {
     }
 
     if (mounted) setState(() {});
+  }*/
+
+  Future<void> _fetchChartData() async {
+    final now = DateTime.now();
+    final startOfWeek = now.subtract(Duration(days: now.weekday - 1)); // Monday
+    final endOfWeek = startOfWeek.add(const Duration(days: 6));        // Sunday
+
+    final startOfMonth = DateTime(now.year, now.month, 1);
+    final endOfMonth = DateTime(now.year, now.month + 1, 0); // Last day of current month
+
+    final snapshot = await _dbRef.child('orders').once();
+    if (snapshot.snapshot.value == null) return;
+
+    final ordersMap = snapshot.snapshot.value as Map<dynamic, dynamic>;
+
+    // Weekly Mon–Sun
+    Map<String, int> weekdayCounts = {
+      'Mon': 0,
+      'Tue': 0,
+      'Wed': 0,
+      'Thu': 0,
+      'Fri': 0,
+      'Sat': 0,
+      'Sun': 0,
+    };
+
+    // Monthly Week Buckets: 1–7, 8–14, 15–21, 22–end
+    Map<int, int> weeklyOrderCounts = {0: 0, 1: 0, 2: 0, 3: 0};
+
+    ordersMap.forEach((orderId, orderData) {
+      if (orderData['items'] == null) return;
+
+      bool hasVendorDeliveredItems = false;
+      final items = orderData['items'] as Map<dynamic, dynamic>;
+      items.forEach((itemId, itemData) {
+        if (itemData['vendorId'] == vendorId && itemData['vendorStatus'] == 'delivered') {
+          hasVendorDeliveredItems = true;
+        }
+      });
+
+      if (!hasVendorDeliveredItems) return;
+
+      final deliveryDate = _parseDeliveryDate(orderData['deliveredAt']);
+      if (deliveryDate == null) return;
+
+      final deliveryDay = DateTime(deliveryDate.year, deliveryDate.month, deliveryDate.day);
+
+      // Calendar-based Weekly (Current Monday–Sunday)
+      if (deliveryDay.isAtSameMomentAs(startOfWeek) ||
+          (deliveryDay.isAfter(startOfWeek) && deliveryDay.isBefore(endOfWeek.add(const Duration(days: 1))))) {
+        final weekday = DateFormat('EEE').format(deliveryDay); // 'Mon', 'Tue', etc.
+        if (weekdayCounts.containsKey(weekday)) {
+          weekdayCounts[weekday] = weekdayCounts[weekday]! + 1;
+        }
+      }
+
+      // Calendar-based Monthly (Week 1: 1–7, Week 2: 8–14, etc.)
+      if (deliveryDay.isAtSameMomentAs(startOfMonth) ||
+          (deliveryDay.isAfter(startOfMonth) && deliveryDay.isBefore(endOfMonth.add(const Duration(days: 1))))) {
+        final day = deliveryDay.day;
+        int weekIndex = (day - 1) ~/ 7;
+        if (weekIndex >= 0 && weekIndex < 4) {
+          weeklyOrderCounts[weekIndex] = weeklyOrderCounts[weekIndex]! + 1;
+        }
+      }
+    });
+
+    // Prepare Weekly Spots & Labels (Mon–Sun)
+    final orderedWeekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    weeklySpots = [];
+    weeklyLabels = [];
+    for (int i = 0; i < orderedWeekdays.length; i++) {
+      final day = orderedWeekdays[i];
+      weeklySpots.add(FlSpot(i.toDouble(), weekdayCounts[day]!.toDouble()));
+      weeklyLabels.add(day);
+    }
+
+    // Prepare Monthly Spots & Labels (Week 1–4)
+    monthlySpots = [];
+    monthlyLabels = [];
+    for (int weekIndex = 0; weekIndex < 4; weekIndex++) {
+      monthlySpots.add(FlSpot(weekIndex.toDouble(), weeklyOrderCounts[weekIndex]!.toDouble()));
+      monthlyLabels.add('Week ${weekIndex + 1}');
+    }
+
+    if (mounted) setState(() {});
   }
+
 
 
 

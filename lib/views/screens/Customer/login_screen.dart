@@ -50,7 +50,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
 
-  void _submitForm() async {
+  /*void _submitForm() async {
     if (_formKey.currentState!.validate()) {
       setState(() => isLoading = true);
 
@@ -181,8 +181,681 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     }
+  }*/
+
+
+  /*void _submitForm() async {
+    if (_formKey.currentState!.validate()) {
+      setState(() => isLoading = true);
+
+      try {
+        String res = await authController.loginUser(
+          _emailController.text.trim(),
+          _passwordController.text.trim(),
+        );
+
+        setState(() => isLoading = false);
+
+        // ✅ Handle unverified email case first
+        if (res == 'email_not_verified') {
+          Get.snackbar(
+            "Email Not Verified",
+            "Please verify your email first. Check your inbox for the verification email.",
+            snackPosition: SnackPosition.TOP,
+            backgroundColor: Colors.white,
+            colorText: Colors.black,
+            icon: const Icon(Icons.warning, color: Colors.orange, size: 30),
+            duration: const Duration(seconds: 5),
+          );
+          return;
+        }
+
+        // ✅ Proceed with role-based logic
+        final role = res.toLowerCase();
+
+        if (role == 'customer' || role == 'admin') {
+          Get.snackbar(
+            "Success",
+            "Successfully Signed In!",
+            snackPosition: SnackPosition.TOP,
+            backgroundColor: Colors.white,
+            colorText: Colors.black,
+            icon: const Icon(Icons.check_circle, color: Colors.green, size: 30),
+            shouldIconPulse: false,
+            snackStyle: SnackStyle.FLOATING,
+            isDismissible: true,
+            margin: const EdgeInsets.all(10),
+          );
+
+          await Future.delayed(const Duration(seconds: 2));
+
+          switch (role) {
+            case 'customer':
+              Get.offAll(() => HomeScreen());
+              break;
+            case 'admin':
+              Get.offAll(() => AdminDashboard());
+              break;
+          }
+        } else if (role == 'vendor') {
+          final snapshot = await FirebaseDatabase.instance
+              .ref()
+              .child('users')
+              .child(FirebaseAuth.instance.currentUser!.uid)
+              .once();
+
+          if (snapshot.snapshot.value != null) {
+            final userData = snapshot.snapshot.value as Map<dynamic, dynamic>;
+            String status = userData['status']?.toString().toLowerCase() ?? 'approved';
+
+            if (status == 'approved') {
+              Get.snackbar(
+                "Success",
+                "Successfully Signed In!",
+                snackPosition: SnackPosition.TOP,
+                backgroundColor: Colors.white,
+                colorText: Colors.black,
+                icon: const Icon(Icons.check_circle, color: Colors.green, size: 30),
+                shouldIconPulse: false,
+                snackStyle: SnackStyle.FLOATING,
+                isDismissible: true,
+                margin: const EdgeInsets.all(10),
+              );
+
+              await Future.delayed(const Duration(seconds: 2));
+              Get.offAll(() => MainVendorScreen());
+            } else if (status == 'pending') {
+              Get.snackbar(
+                "Pending Approval",
+                "Your account is pending approval. Please wait for admin approval.",
+                snackPosition: SnackPosition.TOP,
+                backgroundColor: Colors.white,
+                colorText: Colors.black,
+                icon: const Icon(Icons.info, color: Colors.orange, size: 30),
+                shouldIconPulse: false,
+                snackStyle: SnackStyle.FLOATING,
+                isDismissible: true,
+                margin: const EdgeInsets.all(10),
+              );
+            } else if (status == 'rejected') {
+              Get.snackbar(
+                "Account Rejected",
+                "Your account has been rejected.",
+                snackPosition: SnackPosition.TOP,
+                backgroundColor: Colors.white,
+                colorText: Colors.black,
+                icon: const Icon(Icons.cancel, color: Colors.red, size: 30),
+                shouldIconPulse: false,
+                snackStyle: SnackStyle.FLOATING,
+                isDismissible: true,
+                margin: const EdgeInsets.all(10),
+              );
+            }
+          }
+        } else {
+          Get.snackbar(
+            "Error",
+            "Invalid credentials! This User is not registered",
+            snackPosition: SnackPosition.TOP,
+            backgroundColor: Colors.white,
+            colorText: Colors.black,
+            icon: const Icon(Icons.cancel, color: Colors.red, size: 30),
+            shouldIconPulse: false,
+            snackStyle: SnackStyle.FLOATING,
+            isDismissible: true,
+            margin: const EdgeInsets.all(10),
+          );
+        }
+      } catch (e) {
+        setState(() => isLoading = false);
+        Get.snackbar(
+          "Error",
+          "There is something wrong",
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: Colors.white,
+          colorText: Colors.black,
+          icon: const Icon(Icons.cancel, color: Colors.red, size: 30),
+          shouldIconPulse: false,
+          snackStyle: SnackStyle.FLOATING,
+          isDismissible: true,
+          margin: const EdgeInsets.all(10),
+        );
+      }
+    }
+  }*/
+
+
+  /*void _submitForm() async {
+    if (_formKey.currentState!.validate()) {
+      setState(() => isLoading = true);
+
+      try {
+        String res = await authController.loginUser(
+          _emailController.text.trim(),
+          _passwordController.text.trim(),
+        );
+
+        // ✅ Move loading state down so email_not_verified can exit early
+        if (res == 'email_not_verified') {
+          setState(() => isLoading = false); // 👈 ensure loader stops
+          Get.snackbar(
+            "Email Not Verified",
+            "Please verify your email first. Check your inbox for the verification email.",
+            snackPosition: SnackPosition.TOP,
+            backgroundColor: Colors.white,
+            colorText: Colors.black,
+            icon: const Icon(Icons.warning, color: Colors.orange, size: 30),
+            duration: const Duration(seconds: 5),
+          );
+          return;
+        }
+
+        setState(() => isLoading = false); // ✅ keep this after email check
+
+        // ✅ Proceed with role-based logic
+        final role = res.toLowerCase();
+
+        if (role == 'customer' || role == 'admin') {
+          Get.snackbar(
+            "Success",
+            "Successfully Signed In!",
+            snackPosition: SnackPosition.TOP,
+            backgroundColor: Colors.white,
+            colorText: Colors.black,
+            icon: const Icon(Icons.check_circle, color: Colors.green, size: 30),
+            shouldIconPulse: false,
+            snackStyle: SnackStyle.FLOATING,
+            isDismissible: true,
+            margin: const EdgeInsets.all(10),
+          );
+
+          await Future.delayed(const Duration(seconds: 2));
+
+          switch (role) {
+            case 'customer':
+              Get.offAll(() => HomeScreen());
+              break;
+            case 'admin':
+              Get.offAll(() => AdminDashboard());
+              break;
+          }
+        } else if (role == 'vendor') {
+          final snapshot = await FirebaseDatabase.instance
+              .ref()
+              .child('users')
+              .child(FirebaseAuth.instance.currentUser!.uid)
+              .once();
+
+          if (snapshot.snapshot.value != null) {
+            final userData = snapshot.snapshot.value as Map<dynamic, dynamic>;
+            String status = userData['status']?.toString().toLowerCase() ?? 'approved';
+
+            if (status == 'approved') {
+              Get.snackbar(
+                "Success",
+                "Successfully Signed In!",
+                snackPosition: SnackPosition.TOP,
+                backgroundColor: Colors.white,
+                colorText: Colors.black,
+                icon: const Icon(Icons.check_circle, color: Colors.green, size: 30),
+                shouldIconPulse: false,
+                snackStyle: SnackStyle.FLOATING,
+                isDismissible: true,
+                margin: const EdgeInsets.all(10),
+              );
+
+              await Future.delayed(const Duration(seconds: 2));
+              Get.offAll(() => MainVendorScreen());
+            } else if (status == 'pending') {
+              Get.snackbar(
+                "Pending Approval",
+                "Your account is pending approval. Please wait for admin approval.",
+                snackPosition: SnackPosition.TOP,
+                backgroundColor: Colors.white,
+                colorText: Colors.black,
+                icon: const Icon(Icons.info, color: Colors.orange, size: 30),
+                shouldIconPulse: false,
+                snackStyle: SnackStyle.FLOATING,
+                isDismissible: true,
+                margin: const EdgeInsets.all(10),
+              );
+            } else if (status == 'rejected') {
+              Get.snackbar(
+                "Account Rejected",
+                "Your account has been rejected.",
+                snackPosition: SnackPosition.TOP,
+                backgroundColor: Colors.white,
+                colorText: Colors.black,
+                icon: const Icon(Icons.cancel, color: Colors.red, size: 30),
+                shouldIconPulse: false,
+                snackStyle: SnackStyle.FLOATING,
+                isDismissible: true,
+                margin: const EdgeInsets.all(10),
+              );
+            }
+          }
+        } else {
+          Get.snackbar(
+            "Error",
+            "Invalid credentials! This User is not registered",
+            snackPosition: SnackPosition.TOP,
+            backgroundColor: Colors.white,
+            colorText: Colors.black,
+            icon: const Icon(Icons.cancel, color: Colors.red, size: 30),
+            shouldIconPulse: false,
+            snackStyle: SnackStyle.FLOATING,
+            isDismissible: true,
+            margin: const EdgeInsets.all(10),
+          );
+        }
+      } catch (e) {
+        setState(() => isLoading = false);
+        Get.snackbar(
+          "Error",
+          "There is something wrong",
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: Colors.white,
+          colorText: Colors.black,
+          icon: const Icon(Icons.cancel, color: Colors.red, size: 30),
+          shouldIconPulse: false,
+          snackStyle: SnackStyle.FLOATING,
+          isDismissible: true,
+          margin: const EdgeInsets.all(10),
+        );
+      }
+    }
+  }*/
+
+  /*void _submitForm() async {
+    if (_formKey.currentState!.validate()) {
+      setState(() => isLoading = true);
+
+      try {
+        String res = await authController.loginUser(
+          _emailController.text.trim(),
+          _passwordController.text.trim(),
+        );
+
+        setState(() => isLoading = false);
+
+        // ✅ If email is not verified
+        if (res == 'email_not_verified') {
+          showDialog(
+            context: context,
+            builder: (_) => AlertDialog(
+              title: const Text("Email Not Verified"),
+              content: const Text(
+                "Please verify your email address. Would you like us to resend the verification email?",
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text("Cancel"),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    Navigator.of(context).pop();
+
+                    // Re-sign-in to make sure currentUser is not null
+                    try {
+                      UserCredential userCredential =
+                      await FirebaseAuth.instance.signInWithEmailAndPassword(
+                        email: _emailController.text.trim(),
+                        password: _passwordController.text.trim(),
+                      );
+
+                      if (!userCredential.user!.emailVerified) {
+                        await userCredential.user!.sendEmailVerification();
+                        Get.snackbar(
+                          "Verification Sent",
+                          "Check your inbox. We've sent a new verification email.",
+                          snackPosition: SnackPosition.TOP,
+                          backgroundColor: Colors.white,
+                          colorText: Colors.black,
+                          icon: const Icon(Icons.mark_email_read,
+                              color: Colors.blue, size: 30),
+                          duration: const Duration(seconds: 5),
+                        );
+                      }
+                    } catch (e) {
+                      Get.snackbar(
+                        "Error",
+                        "Could not resend verification email.",
+                        snackPosition: SnackPosition.TOP,
+                        backgroundColor: Colors.white,
+                        colorText: Colors.black,
+                        icon: const Icon(Icons.error, color: Colors.red),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF4A49),
+                  ),
+                  child: const Text("Resend"),
+                ),
+              ],
+            ),
+          );
+          return;
+        }
+
+        // ✅ Proceed with role-based logic
+        final role = res.toLowerCase();
+
+        if (role == 'customer' || role == 'admin') {
+          Get.snackbar(
+            "Success",
+            "Successfully Signed In!",
+            snackPosition: SnackPosition.TOP,
+            backgroundColor: Colors.white,
+            colorText: Colors.black,
+            icon: const Icon(Icons.check_circle, color: Colors.green, size: 30),
+          );
+
+          await Future.delayed(const Duration(seconds: 2));
+
+          switch (role) {
+            case 'customer':
+              Get.offAll(() => HomeScreen());
+              break;
+            case 'admin':
+              Get.offAll(() => AdminDashboard());
+              break;
+          }
+        } else if (role == 'vendor') {
+          final snapshot = await FirebaseDatabase.instance
+              .ref()
+              .child('users')
+              .child(FirebaseAuth.instance.currentUser!.uid)
+              .once();
+
+          if (snapshot.snapshot.value != null) {
+            final userData = snapshot.snapshot.value as Map<dynamic, dynamic>;
+            String status =
+                userData['status']?.toString().toLowerCase() ?? 'approved';
+
+            if (status == 'approved') {
+              Get.snackbar(
+                "Success",
+                "Successfully Signed In!",
+                snackPosition: SnackPosition.TOP,
+                backgroundColor: Colors.white,
+                colorText: Colors.black,
+                icon: const Icon(Icons.check_circle, color: Colors.green, size: 30),
+              );
+
+              await Future.delayed(const Duration(seconds: 2));
+              Get.offAll(() => MainVendorScreen());
+            } else if (status == 'pending') {
+              Get.snackbar(
+                "Pending Approval",
+                "Your account is pending approval. Please wait for admin approval.",
+                snackPosition: SnackPosition.TOP,
+                backgroundColor: Colors.white,
+                colorText: Colors.black,
+                icon: const Icon(Icons.info, color: Colors.orange, size: 30),
+              );
+            } else if (status == 'rejected') {
+              Get.snackbar(
+                "Account Rejected",
+                "Your account has been rejected.",
+                snackPosition: SnackPosition.TOP,
+                backgroundColor: Colors.white,
+                colorText: Colors.black,
+                icon: const Icon(Icons.cancel, color: Colors.red, size: 30),
+              );
+            }
+          }
+        } else {
+          Get.snackbar(
+            "Error",
+            "Invalid credentials! This user is not registered.",
+            snackPosition: SnackPosition.TOP,
+            backgroundColor: Colors.white,
+            colorText: Colors.black,
+            icon: const Icon(Icons.cancel, color: Colors.red, size: 30),
+          );
+        }
+      } catch (e) {
+        setState(() => isLoading = false);
+        Get.snackbar(
+          "Error",
+          "Something went wrong.",
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: Colors.white,
+          colorText: Colors.black,
+          icon: const Icon(Icons.error, color: Colors.red),
+        );
+      }
+    }
+  }*/
+
+  void _submitForm() async {
+    if (_formKey.currentState!.validate()) {
+      setState(() => isLoading = true);
+
+      try {
+        String res = await authController.loginUser(
+          _emailController.text.trim(),
+          _passwordController.text.trim(),
+        );
+
+        // First check for email verification status
+        if (res == 'email_not_verified') {
+          setState(() => isLoading = false);
+          _showEmailNotVerifiedDialog();
+          return;
+        }
+
+        setState(() => isLoading = false);
+
+        // Now handle role-based logic
+        final role = res.toLowerCase();
+
+        if (role == 'customer' || role == 'admin') {
+          _handleSuccessfulLogin(role);
+        }
+        else if (role == 'vendor') {
+          await _handleVendorLogin();
+        }
+        else if (res == 'pending_approval') {
+          Get.snackbar(
+            "Pending Approval",
+            "Your account is pending approval. Please wait for admin approval.",
+            snackPosition: SnackPosition.TOP,
+            backgroundColor: Colors.white,
+            colorText: Colors.black,
+            icon: const Icon(Icons.info, color: Colors.orange, size: 30),
+            shouldIconPulse: false,
+            snackStyle: SnackStyle.FLOATING,
+            isDismissible: true,
+          );
+        }
+        else if (res == 'Account rejected') {
+          Get.snackbar(
+            "Account Rejected",
+            "Your account has been rejected.",
+            snackPosition: SnackPosition.TOP,
+            backgroundColor: Colors.white,
+            colorText: Colors.black,
+            icon: const Icon(Icons.cancel, color: Colors.red, size: 30),
+            shouldIconPulse: false,
+            snackStyle: SnackStyle.FLOATING,
+            isDismissible: true,
+          );
+        }
+        else {
+          // Handle invalid credentials
+          Get.snackbar(
+            "Error",
+            "Invalid credentials! This user is not registered.",
+            snackPosition: SnackPosition.TOP,
+            backgroundColor: Colors.white,
+            colorText: Colors.black,
+            icon: const Icon(Icons.cancel, color: Colors.red, size: 30),
+            shouldIconPulse: false,
+            snackStyle: SnackStyle.FLOATING,
+            isDismissible: true,
+          );
+        }
+      } catch (e) {
+        setState(() => isLoading = false);
+        Get.snackbar(
+          "Error",
+          e.toString(), // Show actual error message
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: Colors.white,
+          colorText: Colors.black,
+          icon: const Icon(Icons.error, color: Colors.red),
+          shouldIconPulse: false,
+          snackStyle: SnackStyle.FLOATING,
+          isDismissible: true,
+        );
+      }
+    }
   }
 
+  void _showEmailNotVerifiedDialog() {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Email Not Verified"),
+        content: const Text(
+          "Please verify your email address. Would you like us to resend the verification email?",
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8), // Less bottom padding
+            child: GestureDetector(
+              onTap: () async {
+                Navigator.of(context).pop();
+                try {
+                  await FirebaseAuth.instance.currentUser?.sendEmailVerification();
+                  Get.snackbar(
+                    "Verification Sent",
+                    "Check your inbox. We've sent a new verification email.",
+                    snackPosition: SnackPosition.TOP,
+                    backgroundColor: Colors.white,
+                    colorText: Colors.black,
+                    icon: const Icon(Icons.mark_email_read, color: Colors.orange, size: 30),
+                    shouldIconPulse: false,
+                    snackStyle: SnackStyle.FLOATING,
+                    isDismissible: true,
+                  );
+                } catch (e) {
+                  Get.snackbar(
+                    "Error",
+                    "Could not resend verification email: ${e.toString()}",
+                    snackPosition: SnackPosition.TOP,
+                    backgroundColor: Colors.white,
+                    colorText: Colors.black,
+                    icon: const Icon(Icons.error, color: Colors.red),
+                    shouldIconPulse: false,
+                    snackStyle: SnackStyle.FLOATING,
+                    isDismissible: true,
+                  );
+                }
+              },
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4), // Reduced vertical padding
+                child: Text(
+                  "Resend",
+                  style: TextStyle(
+                    color: Color(0xFFFF4A49),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
+
+  void _handleSuccessfulLogin(String role) async {
+    Get.snackbar(
+      "Success",
+      "Successfully Signed In!",
+      snackPosition: SnackPosition.TOP,
+      backgroundColor: Colors.white,
+      colorText: Colors.black,
+      icon: const Icon(Icons.check_circle, color: Colors.green, size: 30),
+      shouldIconPulse: false,
+      snackStyle: SnackStyle.FLOATING,
+      isDismissible: true,
+    );
+
+    await Future.delayed(const Duration(seconds: 2));
+
+    switch (role) {
+      case 'customer':
+        Get.offAll(() => HomeScreen());
+        break;
+      case 'admin':
+        Get.offAll(() => AdminDashboard());
+        break;
+      default:
+        Get.offAll(() => HomeScreen());
+    }
+  }
+
+  Future<void> _handleVendorLogin() async {
+    final snapshot = await FirebaseDatabase.instance
+        .ref()
+        .child('users')
+        .child(FirebaseAuth.instance.currentUser!.uid)
+        .once();
+
+    if (snapshot.snapshot.value != null) {
+      final userData = snapshot.snapshot.value as Map<dynamic, dynamic>;
+      String status = userData['status']?.toString().toLowerCase() ?? 'approved';
+
+      if (status == 'approved') {
+        Get.snackbar(
+          "Success",
+          "Successfully Signed In!",
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: Colors.white,
+          colorText: Colors.black,
+          icon: const Icon(Icons.check_circle, color: Colors.green, size: 30),
+          shouldIconPulse: false,
+          snackStyle: SnackStyle.FLOATING,
+          isDismissible: true,
+        );
+        await Future.delayed(const Duration(seconds: 2));
+        Get.offAll(() => MainVendorScreen());
+      } else if (status == 'pending') {
+        Get.snackbar(
+          "Pending Approval",
+          "Your account is pending approval. Please wait for admin approval.",
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: Colors.white,
+          colorText: Colors.black,
+          icon: const Icon(Icons.info, color: Colors.orange, size: 30),
+          shouldIconPulse: false,
+          snackStyle: SnackStyle.FLOATING,
+          isDismissible: true,
+          margin: const EdgeInsets.all(10),
+        );
+      } else if (status == 'rejected') {
+        Get.snackbar(
+          "Account Rejected",
+          "Your account has been rejected.",
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: Colors.white,
+          colorText: Colors.black,
+          icon: const Icon(Icons.cancel, color: Colors.red, size: 30),
+          shouldIconPulse: false,
+          snackStyle: SnackStyle.FLOATING,
+          isDismissible: true,
+          margin: const EdgeInsets.all(10),
+        );
+      }
+    }
+  }
 
 
   @override

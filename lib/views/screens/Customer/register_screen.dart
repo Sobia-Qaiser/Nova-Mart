@@ -171,7 +171,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       );
 
 
-      if (res == 'success') {
+      /*if (res == 'success') {
         setState(() {
           isLoading = false;
         });
@@ -193,7 +193,29 @@ class _SignUpScreenState extends State<SignUpScreen> {
         await Future.delayed(Duration(seconds: 2));
 
         Get.off(() => LoginScreen());
-      } else if (res == 'user_exists') {
+      }*/
+      // In _SignUpScreenState's _submitForm method
+      if (res == 'success') {
+        setState(() => isLoading = false);
+
+        Get.snackbar(
+          "Verification Email Sent",
+          "We've sent a verification email. Please check your inbox and verify your email before logging in.",
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: Colors.white,
+          colorText: Colors.black,
+          icon: const Icon(Icons.email, color: Colors.orange, size: 30),
+          shouldIconPulse: false,
+          snackStyle: SnackStyle.FLOATING,
+          isDismissible: true,
+        );
+
+        await Future.delayed(Duration(seconds: 5));
+        Get.off(() => LoginScreen());
+      }
+
+
+    else if (res == 'user_exists') {
         setState(() {
           isLoading = false;
         });

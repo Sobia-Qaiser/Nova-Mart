@@ -8,7 +8,7 @@ class AuthController {
   final DatabaseReference database = FirebaseDatabase.instance.ref();
 
   //  createNewUser method
-  Future<String> createNewUser(String fullName,
+ /* Future<String> createNewUser(String fullName,
       String email,
       String password,
       String role, {
@@ -120,6 +120,107 @@ class AuthController {
       res = e.toString();
     }
     return res;
+  }*/
+
+
+  // In AuthController class
+
+  Future<String> createNewUser(String fullName, String email, String password, String role,
+      {String businessName = '', String phoneNumber = '', String address = '', String stripeAccountId = ''}) async {
+    String res = 'some error occurred';
+    try {
+      UserCredential userCredential = await auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      // Send verification email
+      await userCredential.user?.sendEmailVerification();
+
+      String uid = userCredential.user!.uid;
+      String createdAt = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
+
+      Map<String, dynamic> userData = {
+        'fullName': fullName,
+        'email': email,
+        'userId': uid,
+        'password': password,
+        'role': role,
+        'createdAt': createdAt,
+        'emailVerified': false, // Track verification status
+      };
+
+      if (role.toLowerCase() == 'vendor') {
+        userData.addAll({
+          'businessName': businessName,
+          'phoneNumber': phoneNumber,
+          'address': address,
+          'stripeAccountId': stripeAccountId,
+          'status': 'pending',
+        });
+      }
+
+      await database.child('users').child(uid).set(userData);
+      res = 'success';
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'email-already-in-use') {
+        res = 'user_exists';
+      } else {
+        res = e.message ?? 'An unexpected error occurred';
+      }
+    } catch (e) {
+      res = e.toString();
+    }
+    return res;
+  }
+
+  /*Future<String> loginUser(String email, String password) async {
+    String res = 'Some error occurred';
+    try {
+      UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      // Check if email is verified
+      if (!userCredential.user!.emailVerified) {
+        await userCredential.user?.sendEmailVerification(); // Resend verification email
+        return 'email_not_verified';
+      }
+
+      await updateUserPasswordInDatabase(email, password);
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user == null) return 'User not found';
+
+      final snapshot = await FirebaseDatabase.instance
+          .ref()
+          .child('users')
+          .child(user.uid)
+          .once();
+
+      if (snapshot.snapshot.value == null) {
+        return 'User data not found';
+      }
+
+      final userData = snapshot.snapshot.value as Map<dynamic, dynamic>;
+      String role = userData['role']?.toString() ?? 'customer';
+      String status = userData['status']?.toString().toLowerCase() ?? 'approved';
+
+      if (role == 'vendor') {
+        if (status == 'pending') {
+          return 'pending_approval';
+        } else if (status == 'approved') {
+          return 'success';
+        } else {
+          return 'Account rejected';
+        }
+      }
+
+      res = role;
+    } catch (e) {
+      res = e.toString();
+    }
+    return res;
   }
 
   // Update password in database
@@ -167,6 +268,49 @@ class AuthController {
       }
     } catch (e) {
       print("Error updating password in database: $e");
+    }
+  }*/
+
+  Future<String> loginUser(String email, String password) async {
+    try {
+      UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      // Check email verification first
+      if (!userCredential.user!.emailVerified) {
+        return 'email_not_verified';
+      }
+
+      // Rest of your login logic...
+      final snapshot = await FirebaseDatabase.instance
+          .ref()
+          .child('users')
+          .child(userCredential.user!.uid)
+          .once();
+
+      if (snapshot.snapshot.value == null) {
+        return 'user_data_not_found';
+      }
+
+      final userData = snapshot.snapshot.value as Map<dynamic, dynamic>;
+      String role = userData['role']?.toString() ?? 'customer';
+      String status = userData['status']?.toString().toLowerCase() ?? 'approved';
+
+      if (role == 'vendor') {
+        if (status == 'pending') return 'pending_approval';
+        if (status == 'rejected') return 'Account rejected';
+      }
+
+      return role; // Return role for successful login
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'user-not-found' || e.code == 'wrong-password') {
+        return 'invalid_credentials';
+      }
+      return e.code;
+    } catch (e) {
+      return e.toString();
     }
   }
 

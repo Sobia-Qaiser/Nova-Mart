@@ -191,7 +191,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
 
-  Future<void> _fetchChartData() async {
+  /*Future<void> _fetchChartData() async {
     final now = DateTime.now();
     final oneWeekAgo = now.subtract(const Duration(days: 7));
     final oneMonthAgo = now.subtract(const Duration(days: 30));
@@ -266,7 +266,91 @@ class _AdminDashboardState extends State<AdminDashboard> {
     }
 
     if (mounted) setState(() {});
+  }*/
+
+  Future<void> _fetchChartData() async {
+    final now = DateTime.now();
+
+    // Get current week's Monday and Sunday
+    final startOfWeek = now.subtract(Duration(days: now.weekday - 1)); // Monday
+    final endOfWeek = startOfWeek.add(const Duration(days: 6));        // Sunday
+
+    // Get current month's 1st and last day
+    final startOfMonth = DateTime(now.year, now.month, 1);
+    final endOfMonth = DateTime(now.year, now.month + 1, 0);
+
+    final snapshot = await _dbRef.child('orders').once();
+    if (snapshot.snapshot.value == null) return;
+
+    final ordersMap = snapshot.snapshot.value as Map<dynamic, dynamic>;
+
+    // Weekly Order Count (Mon–Sun)
+    Map<String, int> weekdayCounts = {
+      'Mon': 0, 'Tue': 0, 'Wed': 0, 'Thu': 0, 'Fri': 0, 'Sat': 0, 'Sun': 0,
+    };
+
+    // Monthly Order Count (4 Weeks)
+    Map<int, int> weeklyOrderCounts = {0: 0, 1: 0, 2: 0, 3: 0};
+
+    ordersMap.forEach((orderId, orderData) {
+      if (orderData['items'] == null) return;
+
+      bool isAnyItemDelivered = false;
+
+      final items = orderData['items'] as Map<dynamic, dynamic>;
+      items.forEach((itemId, itemData) {
+        if (itemData['vendorStatus'] == 'delivered') {
+          isAnyItemDelivered = true;
+        }
+      });
+
+      if (!isAnyItemDelivered) return;
+
+      final deliveryDate = _parseDeliveryDate(orderData['deliveredAt']);
+      if (deliveryDate == null) return;
+
+      final weekday = DateFormat('EEE').format(deliveryDate);
+
+      // === Weekly Count === (based on current calendar week)
+      if (!deliveryDate.isBefore(startOfWeek) && !deliveryDate.isAfter(endOfWeek)) {
+        if (weekdayCounts.containsKey(weekday)) {
+          weekdayCounts[weekday] = weekdayCounts[weekday]! + 1;
+        }
+      }
+
+      // === Monthly Count === (based on current month)
+      if (!deliveryDate.isBefore(startOfMonth) && !deliveryDate.isAfter(endOfMonth)) {
+        final day = deliveryDate.day;
+        final weekIndex = (day - 1) ~/ 7; // 0-based index: 1–7 => 0, 8–14 => 1, etc.
+        if (weekIndex >= 0 && weekIndex < 4) {
+          weeklyOrderCounts[weekIndex] = weeklyOrderCounts[weekIndex]! + 1;
+        }
+      }
+    });
+
+    // === Weekly Spots ===
+    final orderedWeekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    weeklySpots = [];
+    weeklyLabels = [];
+
+    for (int i = 0; i < orderedWeekdays.length; i++) {
+      final day = orderedWeekdays[i];
+      weeklySpots.add(FlSpot(i.toDouble(), weekdayCounts[day]!.toDouble()));
+      weeklyLabels.add(day);
+    }
+
+    // === Monthly Spots ===
+    monthlySpots = [];
+    monthlyLabels = [];
+
+    for (int weekIndex = 0; weekIndex < 4; weekIndex++) {
+      monthlySpots.add(FlSpot(weekIndex.toDouble(), weeklyOrderCounts[weekIndex]!.toDouble()));
+      monthlyLabels.add('Week ${weekIndex + 1}');
+    }
+
+    if (mounted) setState(() {});
   }
+
 
 
 
@@ -370,11 +454,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
       );
     }
 
-    // Unified maxY calculation from both datasets
-    final combinedSpots = [...weeklySpots, ...monthlySpots];
-    double maxYValue = combinedSpots.map((spot) => spot.y).reduce((a, b) => a > b ? a : b);
-    maxYValue = (maxYValue * 1.2).ceilToDouble();
-    if (maxYValue < 14) maxYValue = 14;
+    // Set fixed maxY to 30
+    final double maxYValue = 30;
 
     return Container(
       height: 300,
@@ -468,7 +549,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         return const Text('');
                       },
                       reservedSize: 32,
-                      interval: 5, // 👈 Yahan interval 5 set kiya gaya hai
+                      interval: 5,
                     ),
                   ),
                   rightTitles: AxisTitles(
@@ -521,6 +602,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       ),
     );
   }
+
 
 
 

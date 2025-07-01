@@ -387,7 +387,7 @@ class _CartScreenState extends State<CartScreen> {
     );
   }*/
 
-  Widget _buildQuantitySelector({
+  /*Widget _buildQuantitySelector({
     required String itemKey,
     required int currentQuantity,
     required String stockStatus, // Add this parameter
@@ -430,7 +430,58 @@ class _CartScreenState extends State<CartScreen> {
         ),
       ],
     );
+  }*/
+
+  Widget _buildQuantitySelector({
+    required String itemKey,
+    required int currentQuantity,
+    required String stockStatus,
+  }) {
+    final bool canDecrease = currentQuantity > 1;
+
+    // ✅ Modified: If stockStatus is "In Stock", limit to 10 items max
+    final bool canIncrease = stockStatus == "In Stock"
+        ? currentQuantity < 10
+        : stockStatus != "Limited Stock";
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Minus Button
+        _styledButton(
+          icon: Icons.remove,
+          onPressed: canDecrease
+              ? () => _updateQuantity(itemKey, currentQuantity - 1)
+              : null,
+          isMinus: true,
+          isEnabled: canDecrease,
+        ),
+        const SizedBox(width: 10),
+
+        // Quantity Display
+        Text(
+          '$currentQuantity',
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            fontFamily: 'Poppins',
+          ),
+        ),
+        const SizedBox(width: 10),
+
+        // Plus Button
+        _styledButton(
+          icon: Icons.add,
+          onPressed: canIncrease
+              ? () => _updateQuantity(itemKey, currentQuantity + 1)
+              : null,
+          isMinus: false,
+          isEnabled: canIncrease,
+        ),
+      ],
+    );
   }
+
 
   /*Widget _styledButton({
     required IconData icon,
