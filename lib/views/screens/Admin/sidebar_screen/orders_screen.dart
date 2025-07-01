@@ -357,7 +357,8 @@ class _OrderManagementPageState extends State<OrderManagementPage> {
                                         fontWeight: FontWeight.bold,
                                       )),
                                 ),
-                                DataCell(Text('\$${order['totalAmount']}',
+                                DataCell(Text('\$${double.parse(order['totalAmount']).round()}',
+
                                     style: const TextStyle(
                                         fontSize: 15, fontFamily: 'Poppins'))),
                                 DataCell(

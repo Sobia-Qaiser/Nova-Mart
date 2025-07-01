@@ -715,7 +715,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _showEmailNotVerifiedDialog() {
+ /* void _showEmailNotVerifiedDialog() {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -771,7 +771,23 @@ class _LoginScreenState extends State<LoginScreen> {
         ],
       ),
     );
+  }*/// resend email code
+
+  void _showEmailNotVerifiedDialog() {
+    Get.snackbar(
+      "Email Not Verified",
+      "Please verify your email. Check your inbox for the verification email.",
+      snackPosition: SnackPosition.TOP,
+      backgroundColor: Colors.white,
+      colorText: Colors.black,
+      icon: const Icon(Icons.mark_email_read, color: Colors.orange, size: 30),
+      shouldIconPulse: false,
+      snackStyle: SnackStyle.FLOATING,
+      isDismissible: true,
+      margin: const EdgeInsets.all(10),
+    );
   }
+
 
 
 

@@ -142,179 +142,161 @@ class _CustomerManagementPageState extends State<CustomerManagementPage> {
       ),
       body: _isLoading
           ? Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(const Color(0xFFFF4A49)),
-        ))
-            : _customerList.isEmpty
-      ? Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(const Color(0xFFFF4A49)),
+          ))
+          : _customerList.isEmpty
+          ? Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'No Customers Found',
+              style: TextStyle(
+                fontSize: 18,
+                fontFamily: 'Poppins',
+                color: Colors.grey.shade600,
+              ),
+            ),
+          ],
+        ),
+      )
+          : Column(
         children: [
-          Text(
-            'No Customers Found',
-            style: TextStyle(
-              fontSize: 18,
-              fontFamily: 'Poppins',
-              color: Colors.grey.shade600,
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.grey.shade100, Colors.grey.shade50],
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Scrollbar(
+                  thumbVisibility: true,
+                  thickness: 8,
+                  radius: const Radius.circular(4),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withOpacity(0.1),
+                              spreadRadius: 2,
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            )
+                          ],
+                        ),
+                        child: DataTable(
+                          headingRowColor:
+                          MaterialStateProperty.resolveWith<Color>(
+                                  (states) => Colors.pink.shade50),
+                          columnSpacing: 30,
+                          horizontalMargin: 20,
+                          columns: const [
+                            DataColumn(
+                                label: Text('Sr#',
+                                    style: TextStyle(
+                                        fontSize: 15,
+                                        fontFamily: 'Poppins',
+                                        fontWeight: FontWeight.bold))),
+                            DataColumn(
+                                label: Text('Full Name',
+                                    style: TextStyle(
+                                        fontSize: 15,
+                                        fontFamily: 'Poppins',
+                                        fontWeight: FontWeight.bold))),
+                            DataColumn(
+                                label: Text('Email',
+                                    style: TextStyle(
+                                        fontSize: 15,
+                                        fontFamily: 'Poppins',
+                                        fontWeight: FontWeight.bold))),
+                            DataColumn(
+                                label: Text('Action',
+                                    style: TextStyle(
+                                        fontSize: 15,
+                                        fontFamily: 'Poppins',
+                                        fontWeight: FontWeight.bold))),
+                          ],
+                          rows: _displayedCustomers.asMap().entries.map((entry) {
+                            final index = entry.key + 1 + ((_currentPage - 1) * _customersPerPage);
+                            final customer = entry.value;
+                            return DataRow(
+                              cells: [
+                                DataCell(Text(index.toString(),
+                                    style: const TextStyle(
+                                        fontSize: 15, fontFamily: 'Poppins'))),
+                                DataCell(Text(customer['fullName'],
+                                    style: const TextStyle(
+                                        fontSize: 15, fontFamily: 'Poppins'))),
+                                DataCell(Text(customer['email'],
+                                    style: const TextStyle(
+                                        fontSize: 15, fontFamily: 'Poppins'))),
+                                DataCell(
+                                  TextButton(
+                                    onPressed: () {
+                                      _removeCustomer(customer['userId']);
+                                    },
+                                    child: const Text(
+                                      'Remove',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontFamily: 'Poppins',
+                                        color: Colors.red,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back_ios, size: 16),
+                  onPressed: _prevPage,
+                  color: _currentPage > 1 ? const Color(0xFFFF4A49) : Colors.grey,
+                ),
+                Text(
+                  'Page $_currentPage of ${(_customerList.length / _customersPerPage).ceil()}',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontFamily: 'Poppins',
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onPressed: _nextPage,
+                  color: _currentPage * _customersPerPage < _customerList.length
+                      ? const Color(0xFFFF4A49)
+                      : Colors.grey,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
         ],
       ),
-    )
-        : Column(
-    children: [
-    Expanded(
-    child: Container(
-    decoration: BoxDecoration(
-    gradient: LinearGradient(
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-    colors: [Colors.grey.shade100, Colors.grey.shade50],
-    ),
-    ),
-    child: Padding(
-    padding: const EdgeInsets.all(16.0),
-    child: Scrollbar(
-    thumbVisibility: true,
-    thickness: 8,
-    radius: const Radius.circular(4),
-    child: SingleChildScrollView(
-    scrollDirection: Axis.horizontal,
-    child: ClipRRect(
-    borderRadius: BorderRadius.circular(12),
-    child: Container(
-    decoration: BoxDecoration(
-    color: Colors.white,
-    boxShadow: [
-    BoxShadow(
-    color: Colors.grey.withOpacity(0.1),
-    spreadRadius: 2,
-    blurRadius: 8,
-    offset: const Offset(0, 2),
-    )
-    ],
-    ),
-    child: DataTable(
-    headingRowColor:
-    MaterialStateProperty.resolveWith<Color>(
-    (states) => Colors.pink.shade50),
-    columnSpacing: 30,
-    horizontalMargin: 20,
-    columns: const [
-    DataColumn(
-    label: Text('Sr#',
-    style: TextStyle(
-    fontSize: 15,
-    fontFamily: 'Poppins',
-    fontWeight: FontWeight.bold))),
-    DataColumn(
-    label: Text('Full Name',
-    style: TextStyle(
-    fontSize: 15,
-    fontFamily: 'Poppins',
-    fontWeight: FontWeight.bold))),
-    DataColumn(
-    label: Text('Email',
-    style: TextStyle(
-    fontSize: 15,
-    fontFamily: 'Poppins',
-    fontWeight: FontWeight.bold))),
-    DataColumn(
-    label: Text('Phone Number',
-    style: TextStyle(
-    fontSize: 15,
-    fontFamily: 'Poppins',
-    fontWeight: FontWeight.bold))),
-    DataColumn(
-    label: Text('Address',
-    style: TextStyle(
-    fontSize: 15,
-    fontFamily: 'Poppins',
-    fontWeight: FontWeight.bold))),
-    DataColumn(
-    label: Text('Action',
-    style: TextStyle(
-    fontSize: 15,
-    fontFamily: 'Poppins',
-    fontWeight: FontWeight.bold))),
-    ],
-    rows: _displayedCustomers.asMap().entries.map((entry) {
-    final index = entry.key + 1 + ((_currentPage - 1) * _customersPerPage);
-    final customer = entry.value;
-    return DataRow(
-    cells: [
-    DataCell(Text(index.toString(),
-    style: const TextStyle(
-    fontSize: 15, fontFamily: 'Poppins'))),
-    DataCell(Text(customer['fullName'],
-    style: const TextStyle(
-    fontSize: 15, fontFamily: 'Poppins'))),
-    DataCell(Text(customer['email'],
-    style: const TextStyle(
-    fontSize: 15, fontFamily: 'Poppins'))),
-    DataCell(Text(customer['phoneNumber'],
-    style: const TextStyle(
-    fontSize: 15, fontFamily: 'Poppins'))),
-    DataCell(Text(customer['address'],
-    style: const TextStyle(
-    fontSize: 15, fontFamily: 'Poppins'))),
-    DataCell(
-    TextButton(
-    onPressed: () {
-    _removeCustomer(customer['userId']);
-    },
-    child: const Text(
-    'Remove',
-    style: TextStyle(
-    fontSize: 15,
-    fontFamily: 'Poppins',
-    color: Colors.red,
-    ),
-    ),
-    ),
-    ),
-    ],
-    );
-    }).toList(),
-    ),
-    ),
-    ),
-    ),
-    ),
-    ),
-    ),
-    ),
-    const SizedBox(height: 16),
-    Align(
-    alignment: Alignment.centerRight,
-    child: Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-    IconButton(
-    icon: const Icon(Icons.arrow_back_ios, size: 16),
-    onPressed: _prevPage,
-    color: _currentPage > 1 ? const Color(0xFFFF4A49) : Colors.grey,
-    ),
-    Text(
-    'Page $_currentPage of ${(_customerList.length / _customersPerPage).ceil()}',
-    style: const TextStyle(
-    fontSize: 15,
-    fontFamily: 'Poppins',
-    ),
-    ),
-    IconButton(
-    icon: const Icon(Icons.arrow_forward_ios, size: 16),
-    onPressed: _nextPage,
-    color: _currentPage * _customersPerPage < _customerList.length
-    ? const Color(0xFFFF4A49)
-        : Colors.grey,
-    ),
-    ],
-    ),
-    ),
-    const SizedBox(height: 16),
-    ],
-    ),
     );
   }
 }
