@@ -819,7 +819,7 @@ class _GeneralScreenState extends State<GeneralScreen> {
   String? _validatePrice(String? value) {
     if (value == null || value.isEmpty) return 'Price is required';
     final price = double.tryParse(value);
-    if (price == null || price <= 0) return 'Must be greater than 0';
+    if (price == null || price <= 0) return ' greater than 0';
     if (int.tryParse(value) == null) return 'Enter valid price';
     return null;
   }
@@ -829,6 +829,7 @@ class _GeneralScreenState extends State<GeneralScreen> {
       final discount = double.tryParse(value);
       final price = _provider.productData['price'] ?? double.tryParse(value);
       if (discount == null || discount < 0) return 'Invalid discount';
+      if (discount == 0) return 'Enter valid price';
       if (price != null && discount >= price) return 'lower than price';
       if (int.tryParse(value) == null) return 'Enter valid price';
     }
@@ -836,7 +837,7 @@ class _GeneralScreenState extends State<GeneralScreen> {
   }
 
   String? _validateShipping(String? value) {
-    if (value == null || value.isEmpty) return 'Shipping charges are required';
+    if (value == null || value.isEmpty) return  'Charges are required';
     final shipping = double.tryParse(value);
     if (shipping == null || shipping < 0) return 'Cannot be negative';
     if (int.tryParse(value) == null) return 'Enter valid price';
@@ -846,7 +847,7 @@ class _GeneralScreenState extends State<GeneralScreen> {
   String? _validateTax(String? value) {
     if (value!.isNotEmpty) {
       final tax = double.tryParse(value);
-      if (tax == null || tax < 0 || tax > 100) return 'Must be 0-100';
+      if (tax == null || tax < 1 || tax > 100) return 'Must be 1%-100%';
     }
     return null;
   }
@@ -1101,9 +1102,15 @@ class _GeneralScreenState extends State<GeneralScreen> {
       if (size.isEmpty && color.isEmpty) {
         Get.snackbar(
           "Error",
-          "Please provide either size or color",
-          backgroundColor: Colors.blueGrey[800],
-          colorText: Colors.white,
+          "Please provide either size or color.",
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: Colors.white,
+          colorText: Colors.black,
+          icon: const Icon(Icons.info, color: Colors.orange, size: 30),
+          shouldIconPulse: false,
+          snackStyle: SnackStyle.FLOATING,
+          isDismissible: true,
+          margin: const EdgeInsets.all(10),
         );
         return;
       }

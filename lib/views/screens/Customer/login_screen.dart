@@ -715,7 +715,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
- /* void _showEmailNotVerifiedDialog() {
+ /*void _showEmailNotVerifiedDialog() {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -773,6 +773,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }*/// resend email code
 
+
   void _showEmailNotVerifiedDialog() {
     Get.snackbar(
       "Email Not Verified",
@@ -787,8 +788,6 @@ class _LoginScreenState extends State<LoginScreen> {
       margin: const EdgeInsets.all(10),
     );
   }
-
-
 
 
   void _handleSuccessfulLogin(String role) async {
@@ -978,37 +977,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           },
                         ),
 
-                        Padding(
-                          padding: const EdgeInsets.only(top: 9.0, bottom: 10.0), // Different padding for top and bottom
-                          child: Align(
-                            alignment: Alignment.centerRight,
-                            child: GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                    context,
-                                    PageRouteBuilder(
-                                    pageBuilder: (context, animation, secondaryAnimation) =>  ForgotPasswordScreen(),
-                                transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                                return FadeTransition(opacity: animation, child: child);
-                                },
-                                ),
-                                );
-                              },
-                              child: const Text(
-                                'Forgot Password?',
-                                style: TextStyle(
-                                  color: Color(0xFF333333),
-                                  fontWeight: FontWeight.bold,
-                                  fontFamily: 'Poppins',
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-
-
-
-                        const SizedBox(height: 5),
+                        const SizedBox(height: 15),
                         Container(
                           width: double.infinity,
                           height: 50,

@@ -296,9 +296,15 @@ class _EditProductScreenState extends State<EditProductScreen> {
       if (size.isEmpty && color.isEmpty) {
         Get.snackbar(
           "Error",
-          "Please provide either size or color",
-          backgroundColor: Colors.blueGrey[800],
-          colorText: Colors.white,
+          "Please provide either size or color.",
+          snackPosition: SnackPosition.TOP,
+          backgroundColor: Colors.white,
+          colorText: Colors.black,
+          icon: const Icon(Icons.info, color: Colors.orange, size: 30),
+          shouldIconPulse: false,
+          snackStyle: SnackStyle.FLOATING,
+          isDismissible: true,
+          margin: const EdgeInsets.all(10),
         );
         return;
       }
@@ -332,7 +338,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
   String? _validatePrice(String? value) {
     if (value == null || value.isEmpty) return 'Price is required';
     final price = double.tryParse(value);
-    if (price == null || price <= 0) return 'Must be greater than 0';
+    if (price == null || price <= 0) return ' greater than 0';
     if (int.tryParse(value) == null) return 'Enter valid price';
     return null;
   }
@@ -346,6 +352,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
     final discount = double.tryParse(value);
     if (discount == null) return 'Enter valid number';
     if (discount < 0) return 'Cannot be negative';
+    if (discount == 0) return 'Enter valid price';
 
     final price = _provider.productData['price'] as double?;
     if (price != null && discount >= price) {
@@ -356,7 +363,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
   }
 
   String? _validateShipping(String? value) {
-    if (value == null || value.isEmpty) return 'Shipping charges are required';
+    if (value == null || value.isEmpty) return 'Charges are required';
     final shipping = double.tryParse(value);
     if (shipping == null || shipping < 0) return 'Cannot be negative';
     if (int.tryParse(value) == null) return 'Enter valid price';
@@ -1004,6 +1011,8 @@ class _EditProductScreenState extends State<EditProductScreen> {
                           final discount = double.tryParse(value!);
                           if (discount == null) return 'Enter valid number';
                           if (discount < 0) return 'Cannot be negative';
+                          if (discount == 0) return 'Enter valid price';
+                          if (int.tryParse(value) == null) return 'Enter valid price';
                           final price = _provider.productData['price'] as double?;
                           if (price != null && discount >= price) {
                             return 'Must be less than price';
@@ -1064,7 +1073,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
                           final tax = double.tryParse(value!);
                           if (tax == null) return 'Enter valid number';
                           if (tax < 0) return 'Cannot be negative';
-                          if (tax > 100) return 'Cannot exceed 100%';
+                          if ( tax < 1 || tax > 100) return 'Must be 1%-100%';
                         }
                         return null;
                       },
