@@ -49,7 +49,7 @@ class MyOrders extends StatelessWidget {
     if (allDelivered) {
       updates['status'] = 'Delivered';
 
-      // 🛑 Check if deliveredAt already exists — don’t overwrite it
+      //  Check if deliveredAt already exists — don’t overwrite it
       final deliveredSnapshot = await ordersRef.child('deliveredAt').get();
       if (!deliveredSnapshot.exists) {
         updates['deliveredAt'] = deliveredAt;
@@ -332,3 +332,5 @@ class _OrderItem extends StatelessWidget {
     );
   }
 }
+
+

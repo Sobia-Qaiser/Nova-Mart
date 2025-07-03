@@ -222,7 +222,7 @@ class _VendorPaymentsScreenState extends State<VendorPaymentsScreen> {
         final result = await createStripeTransfer(
           amount: amount * 100,
           destinationAccountId: stripeAccountId,
-          serverUrl: 'http://192.168.0.106:3000/create-transfer',
+          serverUrl: 'http://192.168.0.103:3000/create-transfer',
         );
 
         // Get current timestamp

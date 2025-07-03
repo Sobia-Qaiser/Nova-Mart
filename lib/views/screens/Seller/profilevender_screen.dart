@@ -278,7 +278,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
               try {
                 // Replace with your Flask local IP and port
-                final response = await http.get(Uri.parse('http://192.168.0.106:5000/generate-recommendations'));
+                final response = await http.get(Uri.parse('http://192.168.0.103:5000/generate-recommendations'));
 
                 Navigator.of(context).pop(); // Close the loading dialog
 
